@@ -58,7 +58,7 @@ backend/
 - **Ubicación**: `app/Models/ModeloBase.php`
 - **Funcionalidad**: 
   - SoftDeletes
-  - Timestamps personalizados: `creado_el`, `actualizado_el`, `eliminado_el`
+  - Timestamps estándar de Laravel: `created_at`, `updated_at`, `deleted_at`
 - **Uso**: Todos los modelos nuevos deben extender `ModeloBase`
 
 ### Policies
@@ -77,7 +77,7 @@ backend/
 ### Migrations
 - **Formato**: `[timestamp]_[accion]_[tabla]_table.php` (snake_case)
 - **Ubicación**: `database/migrations/[Modulo]/` (organizadas por módulo)
-- **Blueprint Auditable**: Siempre usar `$table->auditable()` en lugar de `timestamps()` y `softDeletes()`
+- **Timestamps**: Usar `$table->timestamps()` y `$table->softDeletes()` estándar de Laravel
 - **Ejemplo**: `database/migrations/[Modulo]/[timestamp]_create_[tabla]_table.php`
 
 ### Rutas
@@ -89,7 +89,7 @@ backend/
 ### ModeloBase
 Todos los modelos deben extender `ModeloBase` que incluye:
 - **SoftDeletes**: Eliminación suave
-- **Timestamps personalizados**: `creado_el`, `actualizado_el`, `eliminado_el`
+- **Timestamps estándar Laravel**: `created_at`, `updated_at`, `deleted_at`
 
 ### Ejemplo de Modelo
 ```php
@@ -118,12 +118,12 @@ class [Modelo] extends ModeloBase
 
 **Nota**: `ModeloBase`.
 
-## Migraciones con Blueprint Auditable
+## Migraciones Estándar Laravel
 
-### BlueprintProvider
-El `BlueprintServiceProvider` registra macros para timestamps personalizados:
-- `$table->auditable()` - Agrega `creado_el`, `actualizado_el`, `eliminado_el`
-- `$table->dropAuditable()` - Elimina las columnas auditable
+### Timestamps y SoftDeletes
+Usar los métodos estándar de Laravel:
+- `$table->timestamps()` - Agrega `created_at`, `updated_at`
+- `$table->softDeletes()` - Agrega `deleted_at`
 
 ### Ejemplo de Migración
 ```php
@@ -141,8 +141,8 @@ return new class extends Migration
             $table->id();
             // columnas
             
-            // Usar blueprint auditable en lugar de timestamps() y softDeletes()
-            $table->auditable();
+            $table->timestamps();
+            $table->softDeletes(); // Solo en tablas que requieran soft delete
         });
     }
 
@@ -154,10 +154,8 @@ return new class extends Migration
 ```
 
 **IMPORTANTE**: 
-- Siempre usar `$table->auditable()` en nuevas migraciones de módulos
-- NO usar `$table->timestamps()` ni `$table->softDeletes()` por separado en migraciones de módulos
 - Las migraciones se organizan por módulo en `database/migrations/[Modulo]/`
-- **Excepción**: Las migraciones del sistema/framework (users, cache, jobs, permissions, activity_log, personal_access_tokens) pueden usar `timestamps()` ya que son generadas por Laravel o paquetes externos
+- Usar `softDeletes()` solo en tablas principales: users, coaches, clientes, productos
 
 ## Organización de Migraciones por Módulo
 
@@ -322,8 +320,8 @@ return response()->json([
 - Español para nombres de clases y mensajes
 
 ### Reglas Importantes
-1. **Todos los modelos extienden `BaseModel`** (excepto `User`)
-2. **Siempre usar `$table->auditable()` en migraciones**
+1. **Todos los modelos extienden `ModeloBase`** (excepto `User`)
+2. **Usar `$table->timestamps()` y `$table->softDeletes()` estándar de Laravel**
 3. **Organizar migraciones por módulo en subcarpetas**
-4. **Activity Log se configura automáticamente en BaseModel**
+4. **SoftDeletes solo en tablas principales**: users, coaches, clientes, productos
 5. **Mensajes siempre en español**

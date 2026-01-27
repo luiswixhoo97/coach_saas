@@ -4,13 +4,16 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes, HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
@@ -18,9 +21,10 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
         'email',
         'password',
+        'rol',
+        'activo',
     ];
 
     /**
@@ -43,6 +47,44 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'activo' => 'boolean',
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relaciones
+    |--------------------------------------------------------------------------
+    */
+
+    public function coach(): HasOne
+    {
+        return $this->hasOne(Coach::class, 'usuario_id');
+    }
+
+    public function cliente(): HasOne
+    {
+        return $this->hasOne(Cliente::class, 'usuario_id');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers de Rol
+    |--------------------------------------------------------------------------
+    */
+
+    public function esAdmin(): bool
+    {
+        return $this->rol === 'admin';
+    }
+
+    public function esCoach(): bool
+    {
+        return $this->rol === 'coach';
+    }
+
+    public function esCliente(): bool
+    {
+        return $this->rol === 'cliente';
     }
 }

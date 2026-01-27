@@ -20,17 +20,18 @@ class BlueprintServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Macro para agregar timestamps + softDeletes en una sola llamada
         if (! Blueprint::hasMacro('auditable')) {
             Blueprint::macro('auditable', function (): void {
-                $this->timestamp('creado_el')->useCurrent();
-                $this->timestamp('actualizado_el')->nullable()->useCurrent()->useCurrentOnUpdate();
-                $this->timestamp('eliminado_el')->nullable();
+                $this->timestamps();      // created_at, updated_at
+                $this->softDeletes();     // deleted_at
             });
         }
 
         if (! Blueprint::hasMacro('dropAuditable')) {
             Blueprint::macro('dropAuditable', function (): void {
-                $this->dropColumn(['eliminado_el', 'actualizado_el', 'creado_el']);
+                $this->dropTimestamps();
+                $this->dropSoftDeletes();
             });
         }
     }

@@ -2,33 +2,29 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
-class ModeloBase extends Model
+/**
+ * Modelo base para todos los modelos de la aplicación.
+ * 
+ * Incluye:
+ * - HasFactory para factories
+ * - Timestamps estándar de Laravel (created_at, updated_at)
+ * 
+ * Para SoftDeletes: agregar `use SoftDeletes` en los modelos que lo requieran.
+ * Modelos con SoftDeletes: Coach, Cliente, Producto
+ * 
+ * Todos los modelos deben extender esta clase excepto User.
+ */
+abstract class ModeloBase extends Model
 {
-    use SoftDeletes;
+    use HasFactory;
 
     /**
-     * Nombre de la columna para soft deletes
+     * Indica si el modelo debe tener timestamps.
+     *
+     * @var bool
      */
-    const DELETED_AT = 'eliminado_el';
-
-    /**
-     * Nombre de la columna created_at
-     */
-    const CREATED_AT = 'creado_el';
-
-    /**
-     * Nombre de la columna updated_at
-     */
-    const UPDATED_AT = 'actualizado_el';
-
-     /**
-     * Obtener el nombre de la clase sin namespace
-     */
-    protected function getClassName(): string
-    {
-        return class_basename($this);
-    }
+    public $timestamps = true;
 }
