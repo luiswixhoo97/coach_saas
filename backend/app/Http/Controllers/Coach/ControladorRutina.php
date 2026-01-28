@@ -24,7 +24,7 @@ class ControladorRutina extends Controller
     /**
      * Listar rutinas del coach.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): PaginacionCollection
     {
         $coach = $this->getCoach($request);
 

@@ -18,7 +18,7 @@ class ControladorPlan extends Controller
         return $request->user()->coach;
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): PaginacionCollection
     {
         $coach = $this->getCoach($request);
 

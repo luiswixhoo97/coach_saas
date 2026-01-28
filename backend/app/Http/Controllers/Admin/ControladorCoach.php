@@ -20,7 +20,7 @@ class ControladorCoach extends Controller
     /**
      * Listar todos los coaches.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): PaginacionCollection
     {
         $query = Coach::with('usuario');
 
