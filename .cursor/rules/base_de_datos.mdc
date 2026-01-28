@@ -1,0 +1,181 @@
+---
+description: Estructura de la base de datos del proyecto Coach SaaS
+globs: ["backend/database/migrations/**/*.php"]
+alwaysApply: false
+---
+
+# Base de Datos - Coach SaaS
+
+## Diagrama de Relaciones (ERD)
+
+```mermaid
+erDiagram
+    users ||--o| coaches : "tiene"
+    users ||--o| clientes : "tiene"
+    
+    coaches ||--o{ clientes : "crea"
+    coaches ||--o{ planes : "tiene"
+    coaches ||--o{ ejercicios : "tiene"
+    coaches ||--o{ rutinas : "tiene"
+    coaches ||--o{ parametros : "define"
+    coaches ||--o{ formularios : "crea"
+    coaches ||--o{ chats : "participa"
+    coaches ||--o{ productos : "vende"
+    coaches ||--o{ ordenes : "recibe"
+    
+    clientes ||--o{ suscripciones : "tiene"
+    clientes ||--o{ rutina_cliente : "asignadas"
+    clientes ||--o{ formulario_respuestas : "responde"
+    clientes ||--o{ chats : "participa"
+    clientes ||--o{ ordenes : "realiza"
+    
+    planes ||--o{ suscripciones : "tiene"
+    
+    suscripciones ||--o{ pagos : "tiene"
+    suscripciones ||--o{ dieta_cliente : "tiene"
+    suscripciones ||--o{ evaluaciones : "tiene"
+    
+    rutinas ||--o{ rutina_ejercicios : "contiene"
+    rutinas ||--o{ rutina_cliente : "asignada"
+    rutinas ||--o| rutinas : "clonada_de"
+    
+    ejercicios ||--o{ rutina_ejercicios : "incluido"
+    
+    evaluaciones ||--o{ parametros_evaluacion : "tiene"
+    evaluaciones ||--o{ fotos_evaluacion : "tiene"
+    
+    parametros ||--o{ parametros_evaluacion : "usado"
+    
+    formularios ||--o{ formulario_respuestas : "tiene"
+    
+    chats ||--o{ mensajes : "contiene"
+    
+    ordenes ||--o{ orden_items : "contiene"
+    ordenes ||--o| pagos_tienda : "pago"
+    
+    productos ||--o{ orden_items : "incluido"
+```
+
+## Tablas por Módulo
+
+### Sistema (Laravel)
+| Tabla | Descripción |
+|-------|-------------|
+| `users` | Usuarios del sistema (admin, coach, cliente) |
+| `password_reset_tokens` | Tokens para reset de contraseña |
+| `sessions` | Sesiones de usuario |
+| `personal_access_tokens` | Tokens de Sanctum |
+| `cache` | Cache de la aplicación |
+| `jobs` | Cola de trabajos |
+
+### Módulo Coaches
+| Tabla | Descripción |
+|-------|-------------|
+| `coaches` | Perfiles de entrenadores |
+| `clientes` | Perfiles de clientes |
+
+### Módulo Planes
+| Tabla | Descripción |
+|-------|-------------|
+| `planes` | Planes de suscripción |
+| `suscripciones` | Suscripciones de clientes |
+| `pagos` | Pagos de suscripciones |
+
+### Módulo Entrenamiento
+| Tabla | Descripción |
+|-------|-------------|
+| `ejercicios` | Catálogo de ejercicios |
+| `rutinas` | Rutinas de entrenamiento |
+| `rutina_ejercicios` | Ejercicios en cada rutina (pivot) |
+| `rutina_cliente` | Rutinas asignadas a clientes (pivot) |
+
+### Módulo Nutrición
+| Tabla | Descripción |
+|-------|-------------|
+| `dieta_cliente` | Dietas asignadas (archivos PDF) |
+
+### Módulo Evaluaciones
+| Tabla | Descripción |
+|-------|-------------|
+| `evaluaciones` | Evaluaciones físicas |
+| `parametros` | Parámetros medibles (peso, grasa, etc.) |
+| `parametros_evaluacion` | Valores de parámetros por evaluación |
+| `fotos_evaluacion` | Fotos de progreso |
+
+### Módulo Formularios
+| Tabla | Descripción |
+|-------|-------------|
+| `formularios` | Formularios personalizados |
+| `formulario_respuestas` | Respuestas de clientes |
+
+### Módulo Chat
+| Tabla | Descripción |
+|-------|-------------|
+| `chats` | Conversaciones coach-cliente |
+| `mensajes` | Mensajes de chat |
+
+### Módulo Tienda
+| Tabla | Descripción |
+|-------|-------------|
+| `productos` | Productos del coach |
+| `ordenes` | Órdenes de compra |
+| `orden_items` | Items de cada orden |
+| `pagos_tienda` | Pagos de órdenes |
+| `tienda_auditoria` | Auditoría de movimientos |
+
+## Estructura de Migraciones
+
+```
+database/migrations/
+├── 0001_01_01_000000_create_users_table.php
+├── 0001_01_01_000001_create_cache_table.php
+├── 0001_01_01_000002_create_jobs_table.php
+├── Coaches/
+│   ├── 2026_01_27_150449_create_coaches_table.php
+│   └── 2026_01_27_150459_create_clientes_table.php
+├── Planes/
+│   ├── 2026_01_27_150509_create_planes_table.php
+│   ├── 2026_01_27_150514_create_suscripciones_table.php
+│   └── 2026_01_27_150517_create_pagos_table.php
+├── Entrenamiento/
+│   ├── 2026_01_27_150524_create_rutinas_table.php
+│   ├── 2026_01_27_150525_create_ejercicios_table.php
+│   ├── 2026_01_27_150526_create_rutina_ejercicios_table.php
+│   └── 2026_01_27_150527_create_rutina_cliente_table.php
+├── Nutricion/
+│   └── 2026_01_27_150532_create_dieta_cliente_table.php
+├── Evaluaciones/
+│   ├── 2026_01_27_150533_create_evaluaciones_table.php
+│   ├── 2026_01_27_150534_create_parametros_table.php
+│   ├── 2026_01_27_150535_create_parametros_evaluacion_table.php
+│   └── 2026_01_27_150540_create_fotos_evaluacion_table.php
+├── Formularios/
+│   ├── 2026_01_27_150541_create_formularios_table.php
+│   └── 2026_01_27_150542_create_formulario_respuestas_table.php
+├── Chat/
+│   ├── 2026_01_27_150543_create_chats_table.php
+│   └── 2026_01_27_150544_create_mensajes_table.php
+└── Tienda/
+    ├── 2026_01_27_150552_create_productos_table.php
+    ├── 2026_01_27_150553_create_ordenes_table.php
+    ├── 2026_01_27_150554_create_orden_items_table.php
+    ├── 2026_01_27_150555_create_pagos_tienda_table.php
+    └── 2026_01_27_150556_create_tienda_auditoria_table.php
+```
+
+## Convenciones
+
+### Timestamps
+- Usar `$table->timestamps()` para `created_at` y `updated_at`
+- Usar `$table->softDeletes()` solo en: `users`, `coaches`, `clientes`, `productos`
+
+### Foreign Keys
+- Siempre usar `$table->foreignId('campo_id')->constrained('tabla')`
+- Definir `onDelete()` según la lógica de negocio:
+  - `cascade` - eliminar registros dependientes
+  - `set null` - permitir huérfanos
+  - `restrict` - prevenir eliminación
+
+### Índices
+- Las foreign keys crean índices automáticamente
+- Agregar índices adicionales en campos de búsqueda frecuente

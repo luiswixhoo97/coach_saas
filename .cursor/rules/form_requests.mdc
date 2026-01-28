@@ -1,0 +1,203 @@
+---
+description: Form Requests para validación del proyecto Coach SaaS
+globs: ["backend/app/Http/Requests/**/*.php"]
+alwaysApply: false
+---
+
+# Form Requests - Coach SaaS
+
+## Estructura de Form Requests
+
+```
+app/Http/Requests/
+├── Autenticacion/
+│   ├── LoginRequest.php
+│   ├── CambiarPasswordRequest.php
+│   └── ResetPasswordRequest.php
+├── Admin/
+│   ├── AlmacenarCoachRequest.php
+│   └── ActualizarCoachRequest.php
+└── Coach/
+    ├── AlmacenarClienteRequest.php
+    ├── ActualizarClienteRequest.php
+    ├── AlmacenarPlanRequest.php
+    ├── ActualizarPlanRequest.php
+    ├── AlmacenarSuscripcionRequest.php
+    ├── AlmacenarEjercicioRequest.php
+    ├── ActualizarEjercicioRequest.php
+    ├── AlmacenarRutinaRequest.php
+    ├── ActualizarRutinaRequest.php
+    ├── AlmacenarEvaluacionRequest.php
+    ├── AlmacenarFormularioRequest.php
+    ├── AlmacenarProductoRequest.php
+    └── ActualizarProductoRequest.php
+```
+
+## Estructura Base de un Form Request
+
+```php
+<?php
+
+namespace App\Http\Requests\Coach;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class AlmacenarClienteRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->esCoach();
+    }
+
+    public function rules(): array
+    {
+        return [
+            'email' => 'required|email|unique:users,email',
+            'sexo' => 'nullable|in:masculino,femenino,otro',
+            'fecha_nacimiento' => 'nullable|date|before:today',
+            'altura' => 'nullable|numeric|min:0|max:300',
+            'objetivo' => 'nullable|string',
+            'password' => 'nullable|string|min:8',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'email.required' => 'El correo electrónico es requerido.',
+            'email.email' => 'El correo electrónico debe ser válido.',
+            'email.unique' => 'Este correo ya está registrado.',
+            // ... más mensajes
+        ];
+    }
+}
+```
+
+## Reglas de Validación Comunes
+
+### Campos de Usuario
+```php
+'email' => 'required|email|unique:users,email'
+'password' => 'required|string|min:8|confirmed'
+```
+
+### Campos Numéricos
+```php
+'precio' => 'required|numeric|min:0'
+'cantidad' => 'required|integer|min:1'
+'altura' => 'nullable|numeric|min:0|max:300'
+```
+
+### Campos de Fecha
+```php
+'fecha' => 'required|date'
+'fecha_nacimiento' => 'nullable|date|before:today'
+'fecha_inicio' => 'required|date|after_or_equal:today'
+```
+
+### Campos Enum
+```php
+'sexo' => 'nullable|in:masculino,femenino,otro'
+'nivel' => 'required|in:principiante,intermedio,avanzado'
+'estado' => 'required|in:activa,pausada,cancelada,vencida'
+'tipo' => 'required|in:fisico,digital'
+'modo' => 'required|in:presencial,online'
+```
+
+### Relaciones (Foreign Keys)
+```php
+'cliente_id' => 'required|exists:clientes,id'
+'plan_id' => 'required|exists:planes,id'
+'suscripcion_id' => 'required|exists:suscripciones,id'
+```
+
+### Archivos
+```php
+'avatar' => 'required|image|max:2048'  // 2MB
+'video' => 'required|mimetypes:video/mp4,video/avi|max:102400'  // 100MB
+'archivo' => 'required|file|mimes:pdf|max:10240'  // 10MB
+```
+
+### Arrays/JSON
+```php
+'preguntas' => 'required|array|min:1'
+'preguntas.*.texto' => 'required|string'
+'preguntas.*.tipo' => 'required|in:texto,numero,seleccion,multiple'
+'cliente_ids' => 'required|array|min:1'
+'cliente_ids.*' => 'exists:clientes,id'
+```
+
+## Convenciones
+
+### Nomenclatura
+- Prefijo `Almacenar` para creación
+- Prefijo `Actualizar` para edición
+- Sufijo `Request`
+
+### Autorización
+```php
+public function authorize(): bool
+{
+    // Admin
+    return $this->user()->esAdmin();
+    
+    // Coach
+    return $this->user()->esCoach();
+    
+    // Cliente
+    return $this->user()->esCliente();
+    
+    // Público
+    return true;
+}
+```
+
+### Mensajes en Español
+Siempre definir mensajes personalizados en español:
+```php
+public function messages(): array
+{
+    return [
+        'campo.required' => 'El campo es requerido.',
+        'campo.email' => 'El correo debe ser válido.',
+        'campo.unique' => 'Este valor ya está registrado.',
+        'campo.min' => 'El valor mínimo es :min.',
+        'campo.max' => 'El valor máximo es :max.',
+        'campo.in' => 'El valor debe ser uno de: :values.',
+        'campo.exists' => 'El registro seleccionado no existe.',
+        'campo.date' => 'Debe ser una fecha válida.',
+        'campo.before' => 'La fecha debe ser anterior a :date.',
+    ];
+}
+```
+
+### Validación Condicional para Updates
+```php
+// En ActualizarRequest usar 'sometimes' en lugar de 'required'
+public function rules(): array
+{
+    return [
+        'nombre' => 'sometimes|string|max:255',
+        'email' => 'sometimes|email|unique:users,email,' . $this->getUsuarioId(),
+    ];
+}
+```
+
+## Uso en Controladores
+
+```php
+use App\Http\Requests\Coach\AlmacenarClienteRequest;
+
+public function almacenar(AlmacenarClienteRequest $request): JsonResponse
+{
+    // La validación ya se ejecutó automáticamente
+    // $request contiene solo datos validados
+    
+    $cliente = Cliente::create($request->validated());
+    
+    return response()->json([
+        'mensaje' => 'Cliente creado correctamente.',
+        'datos' => new ClienteResource($cliente),
+    ], 201);
+}
+```

@@ -1,0 +1,208 @@
+---
+description: Controladores API del proyecto Coach SaaS
+globs: ["backend/app/Http/Controllers/**/*.php", "backend/routes/**/*.php"]
+alwaysApply: false
+---
+
+# Controladores API - Coach SaaS
+
+## Estructura de Controladores
+
+```
+app/Http/Controllers/
+├── Controller.php                    (base)
+├── Autenticacion/
+│   └── ControladorAutenticacion.php
+├── Admin/
+│   ├── ControladorDashboard.php
+│   ├── ControladorCoach.php
+│   └── ControladorCliente.php
+├── Coach/
+│   ├── ControladorPerfil.php
+│   ├── ControladorCliente.php
+│   ├── ControladorPlan.php
+│   ├── ControladorSuscripcion.php
+│   ├── ControladorPago.php
+│   ├── ControladorEjercicio.php
+│   ├── ControladorRutina.php
+│   ├── ControladorDieta.php
+│   ├── ControladorParametro.php
+│   ├── ControladorEvaluacion.php
+│   ├── ControladorFormulario.php
+│   ├── ControladorChat.php
+│   ├── ControladorProducto.php
+│   └── ControladorOrden.php
+├── Cliente/
+│   ├── ControladorPerfil.php
+│   ├── ControladorRutina.php
+│   ├── ControladorDieta.php
+│   ├── ControladorEvaluacion.php
+│   ├── ControladorFormulario.php
+│   ├── ControladorChat.php
+│   ├── ControladorSuscripcion.php
+│   └── ControladorTienda.php
+└── Webhook/
+    └── ControladorStripe.php
+```
+
+## Estructura de Rutas
+
+```
+routes/
+├── api.php                 (carga módulos con prefijo /api/v1)
+└── app/
+    ├── autenticacion.php   (rutas públicas y protegidas de auth)
+    ├── admin.php           (middleware: auth:sanctum, rol:admin)
+    ├── coach.php           (middleware: auth:sanctum, rol:coach)
+    ├── cliente.php         (middleware: auth:sanctum, rol:cliente)
+    └── webhooks.php        (sin autenticación)
+```
+
+## Endpoints por Módulo
+
+### Autenticación (`/api/v1/auth`)
+| Método | Ruta | Controlador | Descripción |
+|--------|------|-------------|-------------|
+| POST | `/login` | login | Iniciar sesión |
+| POST | `/logout` | logout | Cerrar sesión |
+| GET | `/me` | me | Usuario autenticado |
+| PUT | `/change-password` | cambiarPassword | Cambiar contraseña |
+| POST | `/forgot-password` | olvidoPassword | Solicitar reset |
+| POST | `/reset-password` | resetearPassword | Resetear contraseña |
+
+### Admin (`/api/v1/admin`)
+| Método | Ruta | Acción |
+|--------|------|--------|
+| GET | `/dashboard` | Estadísticas generales |
+| GET | `/reportes/ingresos` | Reporte de ingresos |
+| GET | `/coaches` | Listar coaches |
+| POST | `/coaches` | Crear coach |
+| GET | `/coaches/{id}` | Ver coach |
+| PUT | `/coaches/{id}` | Actualizar coach |
+| PUT | `/coaches/{id}/toggle-status` | Activar/desactivar |
+| DELETE | `/coaches/{id}` | Eliminar coach |
+| GET | `/clientes` | Listar clientes |
+| GET | `/clientes/{id}` | Ver cliente |
+| GET | `/pagos` | Listar pagos |
+
+### Coach (`/api/v1/coach`)
+
+#### Perfil
+| Método | Ruta | Acción |
+|--------|------|--------|
+| GET | `/perfil` | Ver perfil |
+| PUT | `/perfil` | Actualizar perfil |
+| POST | `/perfil/avatar` | Subir avatar |
+| GET | `/dashboard` | Métricas del coach |
+
+#### Clientes
+| Método | Ruta | Acción |
+|--------|------|--------|
+| GET | `/clientes` | Listar clientes |
+| POST | `/clientes` | Crear cliente |
+| GET | `/clientes/{id}` | Ver cliente |
+| PUT | `/clientes/{id}` | Actualizar cliente |
+| DELETE | `/clientes/{id}` | Eliminar cliente |
+| GET | `/clientes/{id}/historial` | Historial completo |
+| GET | `/clientes/{id}/progreso` | Progreso (evaluaciones) |
+
+#### Planes y Suscripciones
+| Método | Ruta | Acción |
+|--------|------|--------|
+| GET | `/planes` | Listar planes |
+| POST | `/planes` | Crear plan |
+| GET/PUT/DELETE | `/planes/{id}` | CRUD plan |
+| GET | `/suscripciones` | Listar suscripciones |
+| POST | `/suscripciones` | Crear suscripción |
+| POST | `/suscripciones/{id}/renovar` | Renovar |
+| POST | `/suscripciones/{id}/cancelar` | Cancelar |
+| GET | `/pagos` | Listar pagos |
+| POST | `/pagos` | Registrar pago |
+
+#### Entrenamiento
+| Método | Ruta | Acción |
+|--------|------|--------|
+| GET | `/ejercicios` | Listar ejercicios |
+| POST | `/ejercicios` | Crear ejercicio |
+| POST | `/ejercicios/{id}/video` | Subir video |
+| GET | `/rutinas` | Listar rutinas |
+| POST | `/rutinas` | Crear rutina |
+| POST | `/rutinas/{id}/duplicar` | Duplicar rutina |
+| POST | `/rutinas/{id}/ejercicios` | Agregar ejercicio |
+| POST | `/rutinas/{id}/asignar` | Asignar a clientes |
+| DELETE | `/rutinas/{id}/desasignar/{clienteId}` | Desasignar |
+
+#### Evaluaciones
+| Método | Ruta | Acción |
+|--------|------|--------|
+| GET | `/parametros` | Listar parámetros |
+| POST | `/parametros` | Crear parámetro |
+| GET | `/evaluaciones` | Listar evaluaciones |
+| POST | `/evaluaciones` | Crear evaluación |
+| POST | `/evaluaciones/{id}/parametros` | Agregar parámetro |
+| POST | `/evaluaciones/{id}/fotos` | Subir foto |
+
+#### Formularios, Chat, Tienda
+- CRUD completo para formularios
+- Chat con mensajes
+- Productos y órdenes
+
+### Cliente (`/api/v1/cliente`)
+| Módulo | Endpoints |
+|--------|-----------|
+| Perfil | GET/PUT `/perfil` |
+| Rutinas | GET `/rutinas`, POST `/rutinas/{id}/registrar` |
+| Dieta | GET `/dieta`, GET `/dieta/download` |
+| Evaluaciones | GET `/evaluaciones`, GET `/progreso` |
+| Formularios | GET `/formularios`, POST `/formularios/{id}/responder` |
+| Chat | GET/POST `/chat/mensajes` |
+| Suscripción | GET `/suscripcion`, GET `/pagos` |
+| Tienda | GET `/tienda/productos`, POST `/tienda/ordenes` |
+
+## Convenciones de Controladores
+
+### Nombres de Métodos
+```php
+index()         // Listar recursos
+almacenar()     // Crear recurso
+mostrar($id)    // Ver un recurso
+actualizar($id) // Actualizar recurso
+eliminar($id)   // Eliminar recurso
+```
+
+### Métodos Helper Privados
+```php
+private function getCoach(Request $request)
+{
+    return $request->user()->coach;
+}
+```
+
+### Respuestas JSON
+```php
+// Éxito con datos
+return response()->json([
+    'mensaje' => 'Recurso creado correctamente.',
+    'datos' => new ResourceClass($modelo),
+], 201);
+
+// Éxito con paginación
+return new PaginacionCollection($coleccion, ResourceClass::class);
+
+// Error
+return response()->json([
+    'mensaje' => 'Error específico.',
+], 400);
+```
+
+### Middleware
+```php
+// En rutas
+Route::middleware(['auth:sanctum', 'rol:coach'])->group(...)
+
+// Middleware disponibles
+- auth:sanctum     // Requiere autenticación
+- rol:admin        // Solo administradores
+- rol:coach        // Solo coaches
+- rol:cliente      // Solo clientes
+```

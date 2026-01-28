@@ -1,0 +1,269 @@
+---
+description: API Resources para respuestas JSON del proyecto Coach SaaS
+globs: ["backend/app/Http/Resources/**/*.php"]
+alwaysApply: false
+---
+
+# API Resources - Coach SaaS
+
+## Estructura de Resources
+
+```
+app/Http/Resources/
+├── UsuarioResource.php
+├── CoachResource.php
+├── ClienteResource.php
+├── PlanResource.php
+├── SuscripcionResource.php
+├── PagoResource.php
+├── EjercicioResource.php
+├── RutinaResource.php
+├── EvaluacionResource.php
+├── FotoEvaluacionResource.php
+├── FormularioResource.php
+├── ChatResource.php
+├── MensajeResource.php
+├── ProductoResource.php
+├── OrdenResource.php
+└── PaginacionCollection.php
+```
+
+## Formato Estándar de Respuesta
+
+```json
+{
+  "datos": { ... },
+  "mensaje": "Operación exitosa",
+  "meta": {
+    "total": 100,
+    "por_pagina": 15,
+    "pagina_actual": 1,
+    "ultima_pagina": 7
+  }
+}
+```
+
+## Resources Principales
+
+### CoachResource
+```php
+public function toArray(Request $request): array
+{
+    return [
+        'id' => $this->id,
+        'nombre' => $this->nombre,
+        'bio' => $this->bio,
+        'avatar' => $this->avatar,
+        'activo' => $this->activo,
+        'email' => $this->whenLoaded('usuario', fn() => $this->usuario->email),
+        'estadisticas' => $this->when($this->relationLoaded('clientes'), fn() => [
+            'clientes_total' => $this->clientes->count(),
+            'clientes_activos' => $this->clientes->where('activo', true)->count(),
+        ]),
+        'created_at' => $this->created_at->format('Y-m-d H:i'),
+    ];
+}
+```
+
+### ClienteResource
+```php
+public function toArray(Request $request): array
+{
+    return [
+        'id' => $this->id,
+        'email' => $this->whenLoaded('usuario', fn() => $this->usuario->email),
+        'sexo' => $this->sexo,
+        'fecha_nacimiento' => $this->fecha_nacimiento?->format('Y-m-d'),
+        'edad' => $this->edad(),
+        'altura' => $this->altura,
+        'objetivo' => $this->objetivo,
+        'activo' => $this->activo,
+        'coach' => new CoachResource($this->whenLoaded('coach')),
+        'suscripcion_activa' => $this->when(
+            method_exists($this->resource, 'suscripcionActiva') && $this->suscripcionActiva(),
+            fn() => new SuscripcionResource($this->suscripcionActiva())
+        ),
+        'created_at' => $this->created_at->format('Y-m-d'),
+    ];
+}
+```
+
+### RutinaResource
+```php
+public function toArray(Request $request): array
+{
+    return [
+        'id' => $this->id,
+        'nombre' => $this->nombre,
+        'nivel' => $this->nivel,
+        'objetivo' => $this->objetivo,
+        'clonada_de' => $this->clonada_de,
+        'ejercicios' => EjercicioResource::collection($this->whenLoaded('ejercicios')),
+        'clientes_asignados' => $this->when(
+            $this->relationLoaded('clientesAsignados'),
+            fn() => $this->clientesAsignados->map(fn($rc) => [
+                'id' => $rc->cliente->id,
+                'email' => $rc->cliente->usuario->email ?? null,
+            ])
+        ),
+        'clientes_asignados_count' => $this->when(
+            isset($this->clientes_asignados_count),
+            $this->clientes_asignados_count
+        ),
+        'created_at' => $this->created_at->format('Y-m-d H:i'),
+    ];
+}
+```
+
+### EjercicioResource (con datos pivot)
+```php
+public function toArray(Request $request): array
+{
+    return [
+        'id' => $this->id,
+        'nombre' => $this->nombre,
+        'grupo_muscular' => $this->grupo_muscular,
+        'video_url' => $this->video_url,
+        // Datos del pivot cuando viene de una rutina
+        'series' => $this->whenPivotLoaded('rutina_ejercicios', fn() => $this->pivot->series),
+        'repeticiones' => $this->whenPivotLoaded('rutina_ejercicios', fn() => $this->pivot->repeticiones),
+        'descanso_segundos' => $this->whenPivotLoaded('rutina_ejercicios', fn() => $this->pivot->descanso_segundos),
+        'bloque' => $this->whenPivotLoaded('rutina_ejercicios', fn() => $this->pivot->bloque),
+        'created_at' => $this->created_at->format('Y-m-d H:i'),
+    ];
+}
+```
+
+### PaginacionCollection
+```php
+class PaginacionCollection extends ResourceCollection
+{
+    public $collects;
+    protected ?string $mensaje = null;
+
+    public function __construct($resource, ?string $resourceClass = null)
+    {
+        $this->collects = $resourceClass;
+        parent::__construct($resource);
+    }
+
+    public function conMensaje(string $mensaje): self
+    {
+        $this->mensaje = $mensaje;
+        return $this;
+    }
+
+    public function toArray(Request $request): array
+    {
+        return [
+            'datos' => $this->collection,
+        ];
+    }
+
+    public function with(Request $request): array
+    {
+        $with = [
+            'meta' => [
+                'total' => $this->resource->total(),
+                'por_pagina' => $this->resource->perPage(),
+                'pagina_actual' => $this->resource->currentPage(),
+                'ultima_pagina' => $this->resource->lastPage(),
+            ],
+        ];
+
+        if ($this->mensaje) {
+            $with['mensaje'] = $this->mensaje;
+        }
+
+        return $with;
+    }
+}
+```
+
+## Convenciones
+
+### Relaciones Condicionales
+```php
+// Cargar solo si la relación está cargada
+'coach' => new CoachResource($this->whenLoaded('coach'))
+
+// Colección de relaciones
+'ejercicios' => EjercicioResource::collection($this->whenLoaded('ejercicios'))
+
+// Datos de pivot
+'series' => $this->whenPivotLoaded('tabla_pivot', fn() => $this->pivot->series)
+```
+
+### Campos Condicionales
+```php
+// Mostrar solo si existe el atributo
+'count' => $this->when(isset($this->items_count), $this->items_count)
+
+// Mostrar solo si se cumple una condición
+'suscripcion' => $this->when($this->suscripcionActiva(), fn() => ...)
+
+// Mostrar solo si la relación está cargada
+'estadisticas' => $this->when($this->relationLoaded('clientes'), fn() => [...])
+```
+
+### Formateo de Fechas
+```php
+'fecha' => $this->fecha->format('Y-m-d')
+'created_at' => $this->created_at->format('Y-m-d H:i')
+'fecha_nacimiento' => $this->fecha_nacimiento?->format('Y-m-d')  // nullable
+```
+
+### URLs de Archivos
+```php
+'url' => asset('storage/' . $this->url)
+'avatar' => $this->avatar ? asset('storage/' . $this->avatar) : null
+```
+
+## Uso en Controladores
+
+### Recurso Individual
+```php
+return response()->json([
+    'mensaje' => 'Cliente creado correctamente.',
+    'datos' => new ClienteResource($cliente),
+], 201);
+```
+
+### Colección Paginada
+```php
+$clientes = Cliente::paginate(15);
+return new PaginacionCollection($clientes, ClienteResource::class);
+```
+
+### Colección Simple
+```php
+return response()->json([
+    'datos' => ClienteResource::collection($clientes),
+]);
+```
+
+### Con Mensaje
+```php
+return (new PaginacionCollection($clientes, ClienteResource::class))
+    ->conMensaje('Clientes encontrados');
+```
+
+## Mapa de Resources por Modelo
+
+| Modelo | Resource |
+|--------|----------|
+| User | UsuarioResource |
+| Coach | CoachResource |
+| Cliente | ClienteResource |
+| Plan | PlanResource |
+| Suscripcion | SuscripcionResource |
+| Pago | PagoResource |
+| Ejercicio | EjercicioResource |
+| Rutina | RutinaResource |
+| Evaluacion | EvaluacionResource |
+| FotoEvaluacion | FotoEvaluacionResource |
+| Formulario | FormularioResource |
+| Chat | ChatResource |
+| Mensaje | MensajeResource |
+| Producto | ProductoResource |
+| Orden | OrdenResource |

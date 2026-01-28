@@ -1,0 +1,236 @@
+---
+description: Modelos Eloquent del proyecto Coach SaaS
+globs: ["backend/app/Models/**/*.php"]
+alwaysApply: false
+---
+
+# Modelos Eloquent - Coach SaaS
+
+## Estructura de Modelos
+
+```
+app/Models/
+├── ModeloBase.php          (clase abstracta base)
+├── User.php                (autenticación)
+├── Coach.php
+├── Cliente.php
+├── Plan.php
+├── Suscripcion.php
+├── Pago.php
+├── Rutina.php
+├── Ejercicio.php
+├── RutinaEjercicio.php
+├── RutinaCliente.php
+├── DietaCliente.php
+├── Evaluacion.php
+├── Parametro.php
+├── ParametroEvaluacion.php
+├── FotoEvaluacion.php
+├── Formulario.php
+├── FormularioRespuesta.php
+├── Chat.php
+├── Mensaje.php
+├── Producto.php
+├── Orden.php
+├── OrdenItem.php
+└── PagoTienda.php
+```
+
+## ModeloBase
+
+Todos los modelos (excepto User) extienden de `ModeloBase`:
+
+```php
+abstract class ModeloBase extends Model
+{
+    use HasFactory;
+    public $timestamps = true;
+}
+```
+
+## Modelos con SoftDeletes
+
+Solo estos modelos usan `SoftDeletes`:
+- `User`
+- `Coach`
+- `Cliente`
+- `Producto`
+
+## Relaciones por Modelo
+
+### User
+```php
+// Relaciones
+coach(): HasOne -> Coach
+cliente(): HasOne -> Cliente
+
+// Métodos helper
+esAdmin(): bool
+esCoach(): bool
+esCliente(): bool
+```
+
+### Coach
+```php
+// Relaciones
+usuario(): BelongsTo -> User
+clientes(): HasMany -> Cliente
+planes(): HasMany -> Plan
+ejercicios(): HasMany -> Ejercicio
+rutinas(): HasMany -> Rutina
+parametros(): HasMany -> Parametro
+formularios(): HasMany -> Formulario
+chats(): HasMany -> Chat
+productos(): HasMany -> Producto
+ordenes(): HasMany -> Orden
+```
+
+### Cliente
+```php
+// Relaciones
+usuario(): BelongsTo -> User
+coach(): BelongsTo -> Coach
+suscripciones(): HasMany -> Suscripcion
+rutinasAsignadas(): HasMany -> RutinaCliente
+formularioRespuestas(): HasMany -> FormularioRespuesta
+chats(): HasMany -> Chat
+ordenes(): HasMany -> Orden
+
+// Métodos helper
+suscripcionActiva(): ?Suscripcion
+edad(): ?int
+```
+
+### Plan
+```php
+// Relaciones
+coach(): BelongsTo -> Coach
+suscripciones(): HasMany -> Suscripcion
+```
+
+### Suscripcion
+```php
+// Relaciones
+cliente(): BelongsTo -> Cliente
+plan(): BelongsTo -> Plan
+pagos(): HasMany -> Pago
+dietas(): HasMany -> DietaCliente
+evaluaciones(): HasMany -> Evaluacion
+
+// Métodos helper
+diasRestantes(): int
+estaActiva(): bool
+```
+
+### Rutina
+```php
+// Relaciones
+coach(): BelongsTo -> Coach
+ejercicios(): BelongsToMany -> Ejercicio (pivot: rutina_ejercicios)
+clientesAsignados(): HasMany -> RutinaCliente
+rutinaOriginal(): BelongsTo -> Rutina (clonada_de)
+rutinasClonadas(): HasMany -> Rutina
+```
+
+### Ejercicio
+```php
+// Relaciones
+coach(): BelongsTo -> Coach
+rutinas(): BelongsToMany -> Rutina (pivot: rutina_ejercicios)
+```
+
+### Evaluacion
+```php
+// Relaciones
+suscripcion(): BelongsTo -> Suscripcion
+parametrosEvaluacion(): HasMany -> ParametroEvaluacion
+fotos(): HasMany -> FotoEvaluacion
+```
+
+### Formulario
+```php
+// Relaciones
+coach(): BelongsTo -> Coach
+respuestas(): HasMany -> FormularioRespuesta
+
+// Métodos helper
+cantidadPreguntas(): int
+```
+
+### Chat
+```php
+// Relaciones
+coach(): BelongsTo -> Coach
+cliente(): BelongsTo -> Cliente
+mensajes(): HasMany -> Mensaje
+
+// Métodos helper
+ultimoMensaje(): ?Mensaje
+mensajesNoLeidos(string $rol): int
+marcarComoLeido(string $rol): void
+```
+
+### Producto
+```php
+// Relaciones
+coach(): BelongsTo -> Coach
+ordenItems(): HasMany -> OrdenItem
+
+// Métodos helper
+tieneStock(): bool
+tieneStockBajo(): bool
+reducirStock(int $cantidad): bool
+aumentarStock(int $cantidad): void
+
+// Scopes
+scopeConStock($query)
+scopeStockBajo($query)
+```
+
+### Orden
+```php
+// Relaciones
+coach(): BelongsTo -> Coach
+cliente(): BelongsTo -> Cliente
+items(): HasMany -> OrdenItem
+pago(): HasOne -> PagoTienda
+
+// Métodos helper
+estaPagada(): bool
+```
+
+## Convenciones de Modelos
+
+### Nombres de Tablas
+```php
+protected $table = 'nombre_tabla';  // snake_case, plural en español
+```
+
+### Fillable
+```php
+protected $fillable = [...];  // Siempre definir campos permitidos
+```
+
+### Casts
+```php
+protected function casts(): array
+{
+    return [
+        'fecha' => 'date',
+        'activo' => 'boolean',
+        'precio' => 'decimal:2',
+        'datos_json' => 'array',
+    ];
+}
+```
+
+### Relaciones
+- Nombres en español y descriptivos
+- `BelongsTo` en singular: `coach()`, `cliente()`
+- `HasMany` en plural: `clientes()`, `suscripciones()`
+- `BelongsToMany` en plural: `ejercicios()`, `rutinas()`
+
+### Métodos Helper
+- Nombres descriptivos en español
+- Prefijo `es` para booleanos: `esActivo()`, `esAdmin()`
+- Prefijo `tiene` para verificaciones: `tieneStock()`
