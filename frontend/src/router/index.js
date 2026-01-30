@@ -14,12 +14,38 @@ const routes = [
     component: () => import('@/views/auth/LoginView.vue'),
     meta: { requiresGuest: true }
   },
-  // Rutas del Coach (placeholder por ahora)
+  // Rutas del Coach (layout con nav móvil + sidebar desktop)
   {
     path: '/coach',
-    name: 'CoachDashboard',
-    component: () => import('@/views/coach/DashboardView.vue'),
-    meta: { requiresAuth: true, rol: 'coach' }
+    component: () => import('@/layouts/CoachLayout.vue'),
+    meta: { requiresAuth: true, rol: 'coach' },
+    children: [
+      {
+        path: '',
+        name: 'CoachDashboard',
+        component: () => import('@/views/coach/DashboardView.vue')
+      },
+      {
+        path: 'usuarios',
+        name: 'CoachUsuarios',
+        component: () => import('@/views/coach/UsuariosView.vue')
+      },
+      {
+        path: 'ejercicios',
+        name: 'CoachEjercicios',
+        component: () => import('@/views/coach/EjerciciosView.vue')
+      },
+      {
+        path: 'rutinas',
+        name: 'CoachRutinas',
+        component: () => import('@/views/coach/RutinasView.vue')
+      },
+      {
+        path: 'perfil',
+        name: 'CoachPerfil',
+        component: () => import('@/views/coach/PerfilView.vue')
+      }
+    ]
   },
   // Rutas del Cliente
   {

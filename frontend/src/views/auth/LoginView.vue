@@ -32,11 +32,11 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col justify-center bg-[var(--color-bg-quaternary)] px-4 py-8 safe-area-top safe-area-bottom">
+  <div class="min-h-screen flex flex-col justify-center bg-gray-50 px-4 py-8 safe-area-top safe-area-bottom">
     <div class="w-full max-w-sm mx-auto">
       <!-- Logo / Título -->
       <div class="text-center mb-8">
-        <div class="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <div class="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
@@ -48,9 +48,12 @@ async function handleSubmit() {
       <!-- Formulario -->
       <form @submit.prevent="handleSubmit" class="space-y-5">
         <!-- Error general -->
-        <BaseAlert v-if="errorGeneral" variant="danger">
+        <div 
+          v-if="errorGeneral" 
+          class="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3 rounded-lg text-sm"
+        >
           {{ errorGeneral }}
-        </BaseAlert>
+        </div>
 
         <!-- Email -->
         <BaseInput
