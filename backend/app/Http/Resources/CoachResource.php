@@ -12,6 +12,9 @@ class CoachResource extends JsonResource
         return [
             'id' => $this->id,
             'nombre' => $this->nombre,
+            'apellido_paterno' => $this->apellido_paterno,
+            'apellido_materno' => $this->apellido_materno,
+            'fecha_nacimiento' => $this->fecha_nacimiento?->format('Y-m-d'),
             'bio' => $this->bio,
             'avatar' => $this->avatar,
             'activo' => $this->activo,

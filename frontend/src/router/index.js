@@ -21,12 +21,23 @@ const routes = [
     component: () => import('@/views/coach/DashboardView.vue'),
     meta: { requiresAuth: true, rol: 'coach' }
   },
-  // Rutas del Cliente (placeholder por ahora)
+  // Rutas del Cliente
   {
     path: '/cliente',
-    name: 'ClienteDashboard',
-    component: () => import('@/views/cliente/DashboardView.vue'),
-    meta: { requiresAuth: true, rol: 'cliente' }
+    component: () => import('@/layouts/ClienteLayout.vue'),
+    meta: { requiresAuth: true, rol: 'cliente' },
+    children: [
+      {
+        path: '',
+        name: 'ClienteDashboard',
+        component: () => import('@/views/cliente/DashboardView.vue')
+      },
+      {
+        path: 'perfil',
+        name: 'ClientePerfil',
+        component: () => import('@/views/cliente/PerfilView.vue')
+      }
+    ]
   },
   // Ruta 404
   {

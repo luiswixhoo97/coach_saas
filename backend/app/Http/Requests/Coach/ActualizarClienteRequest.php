@@ -14,6 +14,9 @@ class ActualizarClienteRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'nombre' => 'sometimes|string|max:255',
+            'apellido_paterno' => 'sometimes|string|max:255',
+            'apellido_materno' => 'nullable|string|max:255',
             'sexo' => 'nullable|in:masculino,femenino,otro',
             'fecha_nacimiento' => 'nullable|date|before:today',
             'altura' => 'nullable|numeric|min:0|max:300',

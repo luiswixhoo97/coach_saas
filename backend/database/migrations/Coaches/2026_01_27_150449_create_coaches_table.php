@@ -15,6 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('usuario_id')->constrained('users')->onDelete('cascade');
             $table->string('nombre');
+            $table->string('apellido_paterno');
+            $table->string('apellido_materno')->nullable();
+            $table->date('fecha_nacimiento')->nullable();
             $table->text('bio')->nullable();
             $table->string('avatar')->nullable();
             $table->boolean('activo')->default(true);

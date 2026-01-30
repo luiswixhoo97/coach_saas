@@ -75,6 +75,9 @@ class ControladorCliente extends Controller
         return [
             'id' => $cliente->id,
             'email' => $cliente->usuario->email ?? null,
+            'nombre' => $cliente->nombre,
+            'apellido_paterno' => $cliente->apellido_paterno,
+            'apellido_materno' => $cliente->apellido_materno,
             'sexo' => $cliente->sexo,
             'fecha_nacimiento' => $cliente->fecha_nacimiento?->format('Y-m-d'),
             'altura' => $cliente->altura,
@@ -83,6 +86,8 @@ class ControladorCliente extends Controller
             'coach' => $cliente->coach ? [
                 'id' => $cliente->coach->id,
                 'nombre' => $cliente->coach->nombre,
+                'apellido_paterno' => $cliente->coach->apellido_paterno,
+                'apellido_materno' => $cliente->coach->apellido_materno,
             ] : null,
             'created_at' => $cliente->created_at->format('Y-m-d H:i'),
         ];

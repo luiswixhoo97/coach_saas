@@ -1,0 +1,29 @@
+# Contexto del Proyecto - Coach SaaS
+
+## Qué es
+
+Plataforma SaaS para entrenadores y coaches de fitness que les permite **operar y gestionar su negocio digital** desde un solo sistema. La plataforma está pensada principalmente para **entrenamiento online**, con soporte para **atención presencial** cuando el entrenador y el cliente lo requieran.
+
+**No es multi-tenant.** Cada coach tiene **su propio espacio** dentro de la plataforma, donde administra a sus clientes, crea sus rutinas, define ejercicios con videos, construye planes nutricionales, realiza evaluaciones físicas, diseña formularios personalizados y gestiona **su propia tienda** de productos. Los datos de un coach no se mezclan con los de otros.
+
+## Roles
+
+- **Administrador**: dueño de la plataforma. Ve y gestiona a **todos** los coaches y clientes.
+- **Coach**: solo ve y trabaja con **sus clientes asignados**, junto con sus rutinas, evaluaciones, pagos, formularios y tienda.
+- **Cliente**: solo accede a **su propia información**, sus rutinas, su progreso, sus pagos y el chat con su entrenador.
+
+## Para el Coach
+
+- Ofrecer planes de entrenamiento y nutrición.
+- Cobrar mediante Stripe o efectivo.
+- Historial completo del progreso de cada cliente: medidas corporales, pliegues, fotos y evaluaciones.
+- Vender productos físicos o digitales en su tienda integrada (ropa, suplementos, programas, contenido exclusivo).
+- Herramienta profesional que **centraliza toda la operación** de su negocio.
+
+## Para el Cliente
+
+- App integral de entrenamiento: rutinas con videos, registrar entrenamientos, responder formularios, consultar evolución, chat con su coach, pagos y compras en el mismo sistema.
+
+## Resumen
+
+Infraestructura digital para entrenadores que convierte su trabajo en un negocio **escalable, organizado y profesional**, integrando entrenamiento, nutrición, seguimiento, comunicación y monetización en una sola plataforma.

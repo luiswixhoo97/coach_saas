@@ -63,6 +63,9 @@ class ControladorCoach extends Controller
             $coach = Coach::create([
                 'usuario_id' => $usuario->id,
                 'nombre' => $request->nombre,
+                'apellido_paterno' => $request->apellido_paterno,
+                'apellido_materno' => $request->apellido_materno,
+                'fecha_nacimiento' => $request->fecha_nacimiento,
                 'bio' => $request->bio,
                 'activo' => true,
             ]);
@@ -109,7 +112,7 @@ class ControladorCoach extends Controller
             }
 
             // Actualizar coach
-            $coach->update($request->only(['nombre', 'bio']));
+            $coach->update($request->only(['nombre', 'apellido_paterno', 'apellido_materno', 'fecha_nacimiento', 'bio']));
         });
 
         $coach->load('usuario');

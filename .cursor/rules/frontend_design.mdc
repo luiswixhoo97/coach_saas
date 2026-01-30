@@ -1,0 +1,417 @@
+# Reglas de Diseño Frontend - Coach SaaS
+
+## Filosofía de Diseño
+
+- **Estilo**: Minimalista, oscuro, inspirado en Apple
+- **Enfoque**: Mobile-first
+- **Framework CSS**: Tailwind CSS 4 con tema personalizado
+
+## Paleta de Colores
+
+### Colores Principales
+```css
+/* Primary (Azul) */
+--color-primary-500: #2970FF;   /* Normal */
+--color-primary-400: #84ADFF;   /* Hover */
+--color-primary-600: #528BFF;   /* Active */
+--color-primary-100: #B2CCFF;   /* Light */
+
+/* Acción Principal (Verde) */
+#00D261   /* Success / Accent principal */
+#00b355   /* Success hover */
+
+/* Estados */
+#EF5C5C   /* Danger / Error */
+#FF9900   /* Warning */
+#007AFF   /* Info */
+```
+
+### Fondos (Dark Theme)
+```css
+#0a0a0a   /* Fondo base de página */
+#161616   /* Fondo de secciones/cards */
+#1e1e1e   /* Fondo de elementos internos (detail cards, inputs) */
+#252525   /* Hover en elementos oscuros */
+#2a2a2a   /* Bordes sutiles, backgrounds secundarios */
+```
+
+### Texto
+```css
+#fff      /* Texto principal (títulos, valores) */
+#a0a0a0   /* Texto secundario claro */
+#697586   /* Texto terciario (labels, hints) */
+```
+
+## Tipografía
+
+```css
+/* Familia */
+font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+/* Tamaños Mobile */
+0.5rem      /* Labels muy pequeños (stats) */
+0.625rem    /* Labels pequeños */
+0.6875rem   /* Labels, badges */
+0.75rem     /* Texto pequeño, subtítulos */
+0.8125rem   /* Texto secundario */
+0.875rem    /* Texto base pequeño */
+1rem        /* Texto base */
+1.125rem    /* Títulos pequeños */
+
+/* Pesos */
+400   /* Normal */
+500   /* Medium (labels) */
+600   /* Semibold (títulos de sección) */
+700   /* Bold (valores, números) */
+```
+
+## Espaciado
+
+```css
+/* Padding de página */
+padding: 1rem;
+padding-top: max(1rem, env(safe-area-inset-top));
+padding-bottom: max(2rem, env(safe-area-inset-bottom));
+
+/* Gaps comunes */
+0.125rem   /* Muy pequeño (entre label y valor) */
+0.25rem    /* Pequeño */
+0.5rem     /* Normal */
+0.75rem    /* Entre elementos */
+1rem       /* Entre secciones */
+```
+
+## Border Radius
+
+```css
+6px     /* Badges, elementos pequeños */
+12px    /* Cards internas, botones */
+16px    /* Secciones principales, cards grandes */
+50%     /* Avatares, círculos */
+```
+
+## Componentes
+
+### Sección (Card Container)
+```css
+.section {
+  background: #161616;
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+```
+
+### Header de Sección
+```css
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.section-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.section-action {
+  font-size: 0.75rem;
+  color: #00D261;
+  cursor: pointer;
+}
+```
+
+### Card Interna (Detail Card)
+```css
+.detail-card {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 1rem;
+}
+```
+
+### Avatar
+```css
+.avatar {
+  width: 56px;           /* Grande */
+  width: 44px;           /* Mediano */
+  height: igual;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2970FF 0%, #528BFF 100%);  /* Usuario */
+  background: linear-gradient(135deg, #00D261 0%, #00b355 100%);  /* Coach */
+  color: #fff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+```
+
+### Botones
+```css
+/* Outline Verde */
+.btn-outline-success {
+  background: transparent;
+  border: 1px solid rgba(0, 210, 97, 0.4);
+  color: #00D261;
+  border-radius: 12px;
+  padding: 0.875rem 1rem;
+}
+.btn-outline-success:hover {
+  background: rgba(0, 210, 97, 0.1);
+  border-color: #00D261;
+}
+
+/* Outline Rojo (Danger) */
+.btn-outline-danger {
+  background: transparent;
+  border: 1px solid rgba(239, 92, 92, 0.4);
+  color: #EF5C5C;
+}
+.btn-outline-danger:hover {
+  background: rgba(239, 92, 92, 0.1);
+}
+```
+
+### Badge de Estado
+```css
+.badge {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.badge--inactive {
+  background: rgba(105, 117, 134, 0.2);
+  color: #697586;
+}
+
+.badge--active {
+  background: rgba(0, 210, 97, 0.15);
+  color: #00D261;
+}
+```
+
+### Iconos
+```css
+/* Tamaños comunes */
+width: 18px;   /* Pequeño (en botones) */
+width: 28px;   /* Mediano (en detail cards) */
+width: 36px;   /* Grande (botón de acción circular) */
+
+/* Color por defecto en dark theme */
+color: #00D261;   /* Iconos de acción/accent */
+color: #697586;   /* Iconos secundarios */
+```
+
+## Grids Responsivos
+
+### Grid de Detalles (2 columnas)
+```css
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+```
+
+### Grid de Estadísticas
+```css
+/* Mobile: 2 columnas */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+/* Desktop: 3 columnas */
+@media (min-width: 640px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+```
+
+## Breakpoints
+
+```css
+/* Mobile first - estilos base son para móvil */
+
+@media (min-width: 640px)  { /* sm - Tablet */ }
+@media (min-width: 768px)  { /* md */ }
+@media (min-width: 1024px) { /* lg - Desktop */ }
+```
+
+## Transiciones
+
+```css
+/* Transición estándar */
+transition: all 0.2s ease;
+transition: transform 0.2s ease, background 0.2s ease;
+
+/* Hover en cards */
+transform: scale(1.02);
+
+/* Active en cards */
+transform: scale(0.98);
+
+/* Animación de progreso */
+transition: stroke-dashoffset 0.6s ease;
+```
+
+## Patrones de Componentes Vue
+
+### Estructura de Componente
+```vue
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+// imports...
+
+// Estado reactivo
+const datos = ref(null)
+const cargando = ref(false)
+const error = ref('')
+
+// Computed
+const datosProcesados = computed(() => { /* ... */ })
+
+// Métodos
+function handleAccion() { /* ... */ }
+
+// Lifecycle
+onMounted(async () => { /* fetch data */ })
+</script>
+
+<template>
+  <!-- Error state -->
+  <div v-if="error" class="alert">{{ error }}</div>
+  
+  <!-- Empty state -->
+  <div v-else-if="!cargando && !datos" class="empty">...</div>
+  
+  <!-- Content -->
+  <template v-else-if="datos">
+    <!-- contenido principal -->
+  </template>
+  
+  <!-- Loading state -->
+  <div v-else-if="cargando" class="loading">...</div>
+</template>
+
+<style scoped>
+/* Estilos con BEM: .componente__elemento--modificador */
+</style>
+```
+
+### Nomenclatura CSS (BEM)
+```css
+.perfil { }                      /* Bloque */
+.perfil__header { }              /* Elemento */
+.perfil__header--compact { }     /* Modificador */
+.perfil__status--active { }      /* Estado */
+```
+
+## Gráficas Circulares (CircularProgress)
+
+### Mobile
+```css
+aspect-ratio: 1 / 1;    /* Cuadrado */
+width círculo: 48px;
+font-size valor: 0.8125rem;
+font-size label: 0.5rem;
+```
+
+### Desktop
+```css
+aspect-ratio: auto;     /* No forzado */
+width círculo: 100px;
+font-size valor: 1.5rem;
+font-size label: 0.75rem;
+```
+
+## Modales
+
+### Overlay
+```css
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 1000;
+}
+```
+
+### Modal (Mobile = Bottom Sheet)
+```css
+.modal {
+  background: #161616;
+  border-radius: 20px 20px 0 0;  /* Mobile: bottom sheet */
+  max-height: 85vh;
+}
+
+@media (min-width: 640px) {
+  .modal {
+    border-radius: 20px;         /* Desktop: centered */
+    max-height: 70vh;
+  }
+}
+```
+
+## Safe Areas (iOS)
+
+```css
+padding-top: max(1rem, env(safe-area-inset-top));
+padding-bottom: max(2rem, env(safe-area-inset-bottom));
+```
+
+## Skeleton Loading
+
+```css
+.skeleton {
+  background: #252525;
+  border-radius: 6px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+```
+
+## Alertas
+
+```css
+/* Error */
+.alert-error {
+  background: rgba(239, 92, 92, 0.12);
+  border: 1px solid rgba(239, 92, 92, 0.3);
+  color: #EF5C5C;
+  border-radius: 16px;
+  padding: 0.875rem 1rem;
+}
+
+/* Success */
+.alert-success {
+  background: rgba(0, 210, 97, 0.12);
+  border: 1px solid rgba(0, 210, 97, 0.3);
+  color: #00D261;
+}
+```
+
+## Reglas Importantes
+
+1. **Mobile First**: Siempre escribir estilos base para móvil, luego usar media queries para desktop
+2. **Dark Theme**: Usar la paleta oscura definida, nunca fondos blancos
+3. **Accent Verde**: El verde #00D261 es el color de acción principal
+4. **Espaciado Consistente**: Usar los valores definidos de spacing
+5. **BEM para CSS**: Usar nomenclatura BEM en clases scoped
+6. **Transiciones Suaves**: Siempre incluir transiciones en elementos interactivos
+7. **Safe Areas**: Considerar notch y home indicator en iOS
+8. **Texto Truncado**: Usar `text-overflow: ellipsis` en textos que pueden desbordar

@@ -12,6 +12,9 @@ class ClienteResource extends JsonResource
         return [
             'id' => $this->id,
             'email' => $this->whenLoaded('usuario', fn() => $this->usuario->email),
+            'nombre' => $this->nombre,
+            'apellido_paterno' => $this->apellido_paterno,
+            'apellido_materno' => $this->apellido_materno,
             'sexo' => $this->sexo,
             'fecha_nacimiento' => $this->fecha_nacimiento?->format('Y-m-d'),
             'edad' => $this->edad(),

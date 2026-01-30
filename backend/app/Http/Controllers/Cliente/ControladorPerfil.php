@@ -25,18 +25,36 @@ class ControladorPerfil extends Controller
 
         $cliente->load('coach');
 
+        // Obtener suscripción activa
+        $suscripcionActiva = $cliente->suscripcionActiva();
+        $suscripcionActiva?->load('plan');
+
         return response()->json([
             'datos' => [
                 'id' => $cliente->id,
                 'email' => $request->user()->email,
+                'nombre' => $cliente->nombre,
+                'apellido_paterno' => $cliente->apellido_paterno,
+                'apellido_materno' => $cliente->apellido_materno,
                 'sexo' => $cliente->sexo,
                 'fecha_nacimiento' => $cliente->fecha_nacimiento?->format('Y-m-d'),
                 'edad' => $cliente->edad(),
                 'altura' => $cliente->altura,
                 'objetivo' => $cliente->objetivo,
+                'activo' => $cliente->activo,
                 'coach' => $cliente->coach ? [
                     'id' => $cliente->coach->id,
                     'nombre' => $cliente->coach->nombre,
+                    'apellido_paterno' => $cliente->coach->apellido_paterno,
+                    'apellido_materno' => $cliente->coach->apellido_materno,
+                ] : null,
+                'suscripcion' => $suscripcionActiva ? [
+                    'id' => $suscripcionActiva->id,
+                    'plan_nombre' => $suscripcionActiva->plan?->nombre,
+                    'fecha_inicio' => $suscripcionActiva->fecha_inicio?->format('Y-m-d'),
+                    'fecha_fin' => $suscripcionActiva->fecha_fin?->format('Y-m-d'),
+                    'dias_restantes' => $suscripcionActiva->diasRestantes(),
+                    'estado' => $suscripcionActiva->estado,
                 ] : null,
             ],
         ]);

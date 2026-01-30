@@ -15,6 +15,9 @@ class Coach extends ModeloBase
     protected $fillable = [
         'usuario_id',
         'nombre',
+        'apellido_paterno',
+        'apellido_materno',
+        'fecha_nacimiento',
         'bio',
         'avatar',
         'activo',
@@ -23,6 +26,7 @@ class Coach extends ModeloBase
     protected function casts(): array
     {
         return [
+            'fecha_nacimiento' => 'date',
             'activo' => 'boolean',
         ];
     }

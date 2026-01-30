@@ -8,6 +8,30 @@ import { useAuthStore } from '@/stores/auth'
 
 // URL base de la API
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+// Origen del backend (sin /api/v1) para Sanctum CSRF
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '')
+
+/** Obtener valor de la cookie XSRF-TOKEN (Laravel Sanctum) */
+function getXsrfTokenFromCookie() {
+  const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/)
+  if (!match) return null
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return match[1]
+  }
+}
+
+/** Asegurar que la cookie CSRF esté establecida antes de POST/PUT/DELETE */
+let csrfPromise = null
+async function ensureCsrfCookie() {
+  if (csrfPromise) return csrfPromise
+  csrfPromise = fetch(`${API_ORIGIN}/sanctum/csrf-cookie`, {
+    credentials: 'include'
+  })
+  await csrfPromise
+  csrfPromise = null
+}
 
 /**
  * Composable principal para llamadas API
@@ -21,7 +45,8 @@ export function useApi() {
    */
   async function peticion(endpoint, opciones = {}) {
     const authStore = useAuthStore()
-    
+    const method = (opciones.method || 'GET').toUpperCase()
+
     cargando.value = true
     error.value = null
 
@@ -36,29 +61,46 @@ export function useApi() {
         headers['Authorization'] = `Bearer ${authStore.token}`
       }
 
+      // Sanctum SPA: CSRF obligatorio en peticiones con mutación cuando se usan cookies
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        await ensureCsrfCookie()
+        const xsrf = getXsrfTokenFromCookie()
+        if (xsrf) headers['X-XSRF-TOKEN'] = xsrf
+      }
+
       const respuesta = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...opciones,
         headers,
         credentials: 'include' // Para cookies de Sanctum
       })
 
-      const datos = await respuesta.json()
+      let datos = {}
+      const contentType = respuesta.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        datos = await respuesta.json()
+      }
 
       // Manejar errores HTTP
       if (!respuesta.ok) {
+        // Token CSRF inválido o caducado (419)
+        if (respuesta.status === 419) {
+          csrfPromise = null
+          throw new Error('Sesión de seguridad caducada. Recarga la página e intenta de nuevo.')
+        }
         // Token expirado o no autorizado
         if (respuesta.status === 401) {
           authStore.cerrarSesion()
           window.location.href = '/login'
           throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.')
         }
-
-        // Error de validación
+        // Error de validación (Laravel devuelve "message" y "errors")
         if (respuesta.status === 422) {
-          throw new Error(datos.mensaje || 'Error de validación')
+          const mensaje = datos.message || datos.mensaje || 'Error de validación'
+          const err = new Error(mensaje)
+          err.errores = datos.errors || {}
+          throw err
         }
-
-        throw new Error(datos.mensaje || 'Error en la petición')
+        throw new Error(datos.message || datos.mensaje || 'Error en la petición')
       }
 
       return datos

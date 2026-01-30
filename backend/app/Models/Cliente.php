@@ -14,6 +14,9 @@ class Cliente extends ModeloBase
 
     protected $fillable = [
         'usuario_id',
+        'nombre',
+        'apellido_paterno',
+        'apellido_materno',
         'sexo',
         'fecha_nacimiento',
         'altura',

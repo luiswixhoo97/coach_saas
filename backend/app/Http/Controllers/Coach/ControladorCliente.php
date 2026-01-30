@@ -67,6 +67,9 @@ class ControladorCliente extends Controller
 
             return Cliente::create([
                 'usuario_id' => $usuario->id,
+                'nombre' => $request->nombre,
+                'apellido_paterno' => $request->apellido_paterno,
+                'apellido_materno' => $request->apellido_materno,
                 'sexo' => $request->sexo,
                 'fecha_nacimiento' => $request->fecha_nacimiento,
                 'altura' => $request->altura,
@@ -113,7 +116,7 @@ class ControladorCliente extends Controller
 
         $cliente = Cliente::where('creado_por', $coach->id)->findOrFail($id);
 
-        $cliente->update($request->only(['sexo', 'fecha_nacimiento', 'altura', 'objetivo']));
+        $cliente->update($request->only(['nombre', 'apellido_paterno', 'apellido_materno', 'sexo', 'fecha_nacimiento', 'altura', 'objetivo']));
 
         return response()->json([
             'mensaje' => 'Cliente actualizado correctamente.',

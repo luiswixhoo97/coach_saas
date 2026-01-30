@@ -17,6 +17,9 @@ class ActualizarCoachRequest extends FormRequest
         
         return [
             'nombre' => 'sometimes|string|max:255',
+            'apellido_paterno' => 'sometimes|string|max:255',
+            'apellido_materno' => 'nullable|string|max:255',
+            'fecha_nacimiento' => 'nullable|date|before:today',
             'bio' => 'nullable|string',
             'email' => 'sometimes|email|unique:users,email,' . $this->getUsuarioId(),
         ];
