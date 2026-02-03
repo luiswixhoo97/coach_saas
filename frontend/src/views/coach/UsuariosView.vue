@@ -4,6 +4,8 @@ import { useApi } from '@/composables/useApi'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import BaseTable from '@/components/ui/BaseTable.vue'
 import ClienteDetalleModal from '@/components/coach/ClienteDetalleModal.vue'
+import AsignarRutinaModal from '@/components/coach/AsignarRutinaModal.vue'
+import SubirDietaModal from '@/components/coach/SubirDietaModal.vue'
 
 const { get, cargando } = useApi()
 const clientes = ref([])
@@ -17,6 +19,12 @@ const detalleCliente = ref(null)
 const cargandoDetalle = ref(false)
 const isMobile = ref(false)
 const MOBILE_BREAKPOINT = 768
+
+// Multi-select
+const selectedClientes = ref(new Set())
+const showAsignarRutinaModal = ref(false)
+const showSubirDietaModal = ref(false)
+const clienteParaAsignar = ref(null)
 
 const paginaActual = computed(() => meta.value.pagina_actual ?? 1)
 const totalPaginas = computed(() => meta.value.ultima_pagina ?? 1)
@@ -82,6 +90,73 @@ function cerrarModal() {
   detalleCliente.value = null
 }
 
+function toggleSeleccion(clienteId) {
+  if (selectedClientes.value.has(clienteId)) {
+    selectedClientes.value.delete(clienteId)
+  } else {
+    selectedClientes.value.add(clienteId)
+  }
+}
+
+function toggleSeleccionTodos() {
+  if (selectedClientes.value.size === clientes.value.length) {
+    selectedClientes.value.clear()
+  } else {
+    clientes.value.forEach(c => selectedClientes.value.add(c.id))
+  }
+}
+
+const haySeleccionados = computed(() => selectedClientes.value.size > 0)
+const clientesSeleccionados = computed(() => {
+  return clientes.value.filter(c => selectedClientes.value.has(c.id))
+})
+
+function abrirAsignarRutina(cliente = null) {
+  clienteParaAsignar.value = cliente
+  showAsignarRutinaModal.value = true
+}
+
+function abrirSubirDieta(cliente = null) {
+  clienteParaAsignar.value = cliente
+  showSubirDietaModal.value = true
+}
+
+function cerrarAsignarRutinaModal() {
+  showAsignarRutinaModal.value = false
+  clienteParaAsignar.value = null
+  selectedClientes.value.clear()
+}
+
+function cerrarSubirDietaModal() {
+  showSubirDietaModal.value = false
+  clienteParaAsignar.value = null
+  selectedClientes.value.clear()
+}
+
+async function onRutinaAsignada() {
+  await cargarClientes(paginaActual.value)
+  if (modalDetalle.value && detalleCliente.value) {
+    const res = await get(`/coach/clientes/${detalleCliente.value.id}`)
+    detalleCliente.value = res.datos ?? res.data ?? res
+  }
+}
+
+async function onDietaSubida() {
+  await cargarClientes(paginaActual.value)
+  if (modalDetalle.value && detalleCliente.value) {
+    const res = await get(`/coach/clientes/${detalleCliente.value.id}`)
+    detalleCliente.value = res.datos ?? res.data ?? res
+  }
+}
+
+async function onDietaEliminada() {
+  await cargarClientes(paginaActual.value)
+  if (modalDetalle.value && detalleCliente.value) {
+    const res = await get(`/coach/clientes/${detalleCliente.value.id}`)
+    detalleCliente.value = res.datos ?? res.data ?? res
+  }
+}
+
 onMounted(() => {
   cargarClientes(1)
   checkMobile()
@@ -125,6 +200,36 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
           </select>
         </div>
 
+        <!-- Acciones masivas -->
+        <div v-if="haySeleccionados" class="usuarios__bulk-actions">
+          <span class="usuarios__bulk-count">
+            {{ selectedClientes.size }} {{ selectedClientes.size === 1 ? 'cliente seleccionado' : 'clientes seleccionados' }}
+          </span>
+          <div class="usuarios__bulk-buttons">
+            <button
+              type="button"
+              class="usuarios__bulk-btn"
+              @click="abrirAsignarRutina()"
+            >
+              Asignar rutina
+            </button>
+            <button
+              type="button"
+              class="usuarios__bulk-btn"
+              @click="abrirSubirDieta()"
+            >
+              Subir dieta
+            </button>
+            <button
+              type="button"
+              class="usuarios__bulk-btn usuarios__bulk-btn--clear"
+              @click="selectedClientes.clear()"
+            >
+              Limpiar
+            </button>
+          </div>
+        </div>
+
         <!-- Desktop: tabla normal -->
         <template v-if="!isMobile">
           <div v-if="cargando && !clientes.length" class="usuarios__loading usuarios__loading--table">
@@ -144,6 +249,14 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
             <table class="usuarios__table">
               <thead class="usuarios__thead">
                 <tr>
+                  <th class="usuarios__th usuarios__th--checkbox">
+                    <input
+                      type="checkbox"
+                      :checked="selectedClientes.size === clientes.length && clientes.length > 0"
+                      @change="toggleSeleccionTodos"
+                      class="usuarios__checkbox"
+                    />
+                  </th>
                   <th class="usuarios__th">Nombre</th>
                   <th class="usuarios__th">Email</th>
                   <th class="usuarios__th">Estado</th>
@@ -156,6 +269,15 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
               </thead>
               <tbody class="usuarios__tbody">
                 <tr v-for="c in clientes" :key="c.id" class="usuarios__tr">
+                  <td class="usuarios__td usuarios__td--checkbox">
+                    <input
+                      type="checkbox"
+                      :checked="selectedClientes.has(c.id)"
+                      @change="toggleSeleccion(c.id)"
+                      class="usuarios__checkbox"
+                      @click.stop
+                    />
+                  </td>
                   <td class="usuarios__td">{{ nombreCompleto(c) }}</td>
                   <td class="usuarios__td usuarios__td--email">{{ c.email || '—' }}</td>
                   <td class="usuarios__td">
@@ -241,6 +363,27 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
           v-if="modalDetalle"
           :cliente="detalleCliente"
           @close="cerrarModal"
+          @asignar-rutina="abrirAsignarRutina"
+          @subir-dieta="abrirSubirDieta"
+          @dieta-eliminada="onDietaEliminada"
+        />
+
+        <!-- Modal asignar rutina -->
+        <AsignarRutinaModal
+          v-if="showAsignarRutinaModal"
+          :cliente="clienteParaAsignar"
+          :clientes="clienteParaAsignar ? [] : clientesSeleccionados"
+          @close="cerrarAsignarRutinaModal"
+          @asignada="onRutinaAsignada"
+        />
+
+        <!-- Modal subir dieta -->
+        <SubirDietaModal
+          v-if="showSubirDietaModal"
+          :cliente="clienteParaAsignar"
+          :clientes="clienteParaAsignar ? [] : clientesSeleccionados"
+          @close="cerrarSubirDietaModal"
+          @subida="onDietaSubida"
         />
 
         <!-- Paginación -->
@@ -637,5 +780,68 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
 .usuarios__page-info {
   font-size: 0.8125rem;
   color: #697586;
+}
+
+.usuarios__bulk-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 210, 97, 0.1);
+  border: 1px solid rgba(0, 210, 97, 0.3);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.usuarios__bulk-count {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #00D261;
+}
+
+.usuarios__bulk-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.usuarios__bulk-btn {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #00D261;
+  background: transparent;
+  border: 1px solid rgba(0, 210, 97, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.usuarios__bulk-btn:hover {
+  background: rgba(0, 210, 97, 0.1);
+  border-color: #00D261;
+}
+
+.usuarios__bulk-btn--clear {
+  color: #697586;
+  border-color: #252525;
+}
+
+.usuarios__bulk-btn--clear:hover {
+  background: #1e1e1e;
+  border-color: #252525;
+}
+
+.usuarios__th--checkbox,
+.usuarios__td--checkbox {
+  width: 40px;
+  text-align: center;
+}
+
+.usuarios__checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #00D261;
 }
 </style>

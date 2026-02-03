@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Coach\DietaClienteResource;
+use App\Http\Resources\Coach\RutinaAsignadaResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -26,6 +28,25 @@ class ClienteResource extends JsonResource
             'suscripcion_activa' => $this->when(
                 method_exists($this->resource, 'suscripcionActiva') && $this->suscripcionActiva(),
                 fn() => new SuscripcionResource($this->suscripcionActiva())
+            ),
+            'rutinas_asignadas' => $this->when(
+                $this->relationLoaded('rutinasAsignadas'),
+                function () {
+                    // Asegurar que todas las rutinas tengan la relación cargada
+                    $this->rutinasAsignadas->loadMissing('rutina');
+                    return RutinaAsignadaResource::collection($this->rutinasAsignadas);
+                }
+            ),
+            'dietas' => $this->when(
+                $this->suscripcionActiva(),
+                function () {
+                    $suscripcion = $this->suscripcionActiva();
+                    // Cargar dietas si no están cargadas
+                    if (!$suscripcion->relationLoaded('dietas')) {
+                        $suscripcion->load('dietas');
+                    }
+                    return DietaClienteResource::collection($suscripcion->dietas);
+                }
             ),
             'created_at' => $this->created_at->format('Y-m-d'),
         ];

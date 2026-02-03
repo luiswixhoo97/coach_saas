@@ -13,7 +13,13 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'edit', 'clonar', 'eliminar'])
+const emit = defineEmits({
+  close: null,
+  edit: null,
+  clonar: null,
+  eliminar: null,
+  asignar: null
+})
 
 const NIVELES = [
   { value: 'principiante', label: 'Principiante' },
@@ -114,15 +120,22 @@ const ejerciciosPorBloque = computed(() => {
         </div>
 
         <div v-if="rutina && !rutina.error" class="rutina-modal__footer rutina-modal__footer--actions">
-          <button type="button" class="rutina-modal__btn rutina-modal__btn--edit" @click="emit('edit')">
-            Editar
-          </button>
-          <button type="button" class="rutina-modal__btn rutina-modal__btn--clonar" @click="emit('clonar')">
-            Clonar
-          </button>
-          <button type="button" class="rutina-modal__btn rutina-modal__btn--eliminar" @click="emit('eliminar')">
-            Eliminar
-          </button>
+          <div class="rutina-modal__actions-row">
+            <button type="button" class="rutina-modal__btn rutina-modal__btn--edit" @click="emit('edit')">
+              Editar
+            </button>
+            <button type="button" class="rutina-modal__btn rutina-modal__btn--asignar" @click="emit('asignar')">
+              Asignar a clientes
+            </button>
+          </div>
+          <div class="rutina-modal__actions-row">
+            <button type="button" class="rutina-modal__btn rutina-modal__btn--clonar" @click="emit('clonar')">
+              Clonar
+            </button>
+            <button type="button" class="rutina-modal__btn rutina-modal__btn--eliminar" @click="emit('eliminar')">
+              Eliminar
+            </button>
+          </div>
         </div>
         <div class="rutina-modal__footer">
           <button type="button" class="rutina-modal__btn" @click="emit('close')">
@@ -352,14 +365,20 @@ const ejerciciosPorBloque = computed(() => {
 
 .rutina-modal__footer--actions {
   display: flex;
-  flex-direction: row;
-  align-items: stretch;
+  flex-direction: column;
   gap: 0.75rem;
   padding-bottom: 0.75rem;
   border-top: 1px solid #252525;
 }
 
-.rutina-modal__footer--actions .rutina-modal__btn {
+.rutina-modal__actions-row {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.rutina-modal__actions-row .rutina-modal__btn {
   flex: 1;
   width: auto;
   min-height: 2.75rem;
@@ -381,6 +400,17 @@ const ejerciciosPorBloque = computed(() => {
 }
 
 .rutina-modal__btn:hover {
+  background: rgba(0, 210, 97, 0.1);
+  border-color: #00D261;
+}
+
+.rutina-modal__btn--asignar {
+  color: #00D261;
+  background: transparent;
+  border: 1px solid rgba(0, 210, 97, 0.4);
+}
+
+.rutina-modal__btn--asignar:hover {
   background: rgba(0, 210, 97, 0.1);
   border-color: #00D261;
 }

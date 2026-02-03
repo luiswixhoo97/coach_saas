@@ -28,49 +28,134 @@ class RelacionesSeeder extends Seeder
     {
         $password = Hash::make('password');
 
-        $admin = User::create([
-            'email' => 'admin@test.com',
-            'password' => $password,
-            'rol' => 'admin',
-            'activo' => true,
-        ]);
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@test.com'],
+            [
+                'password' => $password,
+                'rol' => 'admin',
+                'activo' => true,
+            ]
+        );
 
-        $usuarioCoach = User::create([
-            'email' => 'coach@test.com',
-            'password' => $password,
-            'rol' => 'coach',
-            'activo' => true,
-        ]);
+        $usuarioCoach = User::firstOrCreate(
+            ['email' => 'coach@test.com'],
+            [
+                'password' => $password,
+                'rol' => 'coach',
+                'activo' => true,
+            ]
+        );
 
-        $coach = Coach::create([
-            'usuario_id' => $usuarioCoach->id,
-            'nombre' => 'Carlos',
-            'apellido_paterno' => 'Coach',
-            'apellido_materno' => 'Prueba',
-            'fecha_nacimiento' => '1985-03-10',
-            'bio' => 'Coach de prueba para desarrollo',
-            'activo' => true,
-        ]);
+        $coach = Coach::firstOrCreate(
+            ['usuario_id' => $usuarioCoach->id],
+            [
+                'nombre' => 'Carlos',
+                'apellido_paterno' => 'Coach',
+                'apellido_materno' => 'Prueba',
+                'fecha_nacimiento' => '1985-03-10',
+                'bio' => 'Coach de prueba para desarrollo',
+                'activo' => true,
+            ]
+        );
 
-        $usuarioCliente = User::create([
-            'email' => 'cliente@test.com',
-            'password' => $password,
-            'rol' => 'cliente',
-            'activo' => true,
-        ]);
+        $usuarioCliente = User::firstOrCreate(
+            ['email' => 'cliente@test.com'],
+            [
+                'password' => $password,
+                'rol' => 'cliente',
+                'activo' => true,
+            ]
+        );
 
-        $cliente = Cliente::create([
-            'usuario_id' => $usuarioCliente->id,
-            'nombre' => 'María',
-            'apellido_paterno' => 'López',
-            'apellido_materno' => 'Sánchez',
-            'sexo' => 'femenino',
-            'fecha_nacimiento' => '1995-08-20',
-            'altura' => 165,
-            'objetivo' => 'Bajar peso',
-            'activo' => true,
-            'creado_por' => $coach->id,
-        ]);
+        $cliente = Cliente::firstOrCreate(
+            ['usuario_id' => $usuarioCliente->id],
+            [
+                'nombre' => 'María',
+                'apellido_paterno' => 'López',
+                'apellido_materno' => 'Sánchez',
+                'sexo' => 'femenino',
+                'fecha_nacimiento' => '1995-08-20',
+                'altura' => 165,
+                'objetivo' => 'Bajar peso',
+                'activo' => true,
+                'creado_por' => $coach->id,
+            ]
+        );
+
+        // Cliente 2
+        $usuarioCliente2 = User::firstOrCreate(
+            ['email' => 'cliente2@test.com'],
+            [
+                'password' => $password,
+                'rol' => 'cliente',
+                'activo' => true,
+            ]
+        );
+
+        $cliente2 = Cliente::firstOrCreate(
+            ['usuario_id' => $usuarioCliente2->id],
+            [
+                'nombre' => 'Juan',
+                'apellido_paterno' => 'García',
+                'apellido_materno' => 'Martínez',
+                'sexo' => 'masculino',
+                'fecha_nacimiento' => '1990-05-15',
+                'altura' => 178,
+                'objetivo' => 'Ganar masa muscular',
+                'activo' => true,
+                'creado_por' => $coach->id,
+            ]
+        );
+
+        // Cliente 3
+        $usuarioCliente3 = User::firstOrCreate(
+            ['email' => 'cliente3@test.com'],
+            [
+                'password' => $password,
+                'rol' => 'cliente',
+                'activo' => true,
+            ]
+        );
+
+        $cliente3 = Cliente::firstOrCreate(
+            ['usuario_id' => $usuarioCliente3->id],
+            [
+                'nombre' => 'Ana',
+                'apellido_paterno' => 'Rodríguez',
+                'apellido_materno' => 'Fernández',
+                'sexo' => 'femenino',
+                'fecha_nacimiento' => '1992-11-30',
+                'altura' => 160,
+                'objetivo' => 'Tonificar',
+                'activo' => true,
+                'creado_por' => $coach->id,
+            ]
+        );
+
+        // Cliente 4
+        $usuarioCliente4 = User::firstOrCreate(
+            ['email' => 'cliente4@test.com'],
+            [
+                'password' => $password,
+                'rol' => 'cliente',
+                'activo' => true,
+            ]
+        );
+
+        $cliente4 = Cliente::firstOrCreate(
+            ['usuario_id' => $usuarioCliente4->id],
+            [
+                'nombre' => 'Pedro',
+                'apellido_paterno' => 'Hernández',
+                'apellido_materno' => 'Torres',
+                'sexo' => 'masculino',
+                'fecha_nacimiento' => '1988-02-25',
+                'altura' => 175,
+                'objetivo' => 'Mejorar condición física',
+                'activo' => true,
+                'creado_por' => $coach->id,
+            ]
+        );
 
         $plan = Plan::create([
             'coach_id' => $coach->id,

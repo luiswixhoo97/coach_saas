@@ -212,6 +212,12 @@ Route::prefix('coach')
     
     Route::get('/dietas/{id}/download', [ControladorDieta::class, 'descargar'])
         ->name('coach.dietas.descargar');
+    
+    Route::get('/dietas/{id}/ver', [ControladorDieta::class, 'ver'])
+        ->name('coach.dietas.ver');
+    
+    Route::post('/dietas/subir-varios', [ControladorDieta::class, 'subirVarios'])
+        ->name('coach.dietas.subir-varios');
 
     /*
     |--------------------------------------------------------------------------

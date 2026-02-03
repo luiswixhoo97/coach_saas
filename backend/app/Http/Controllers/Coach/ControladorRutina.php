@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Coach;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Coach\ActualizarRutinaRequest;
 use App\Http\Requests\Coach\AlmacenarRutinaRequest;
+use App\Http\Requests\Coach\SolicitudAsignarRutina;
 use App\Http\Resources\PaginacionCollection;
 use App\Http\Resources\RutinaResource;
+use App\Models\Cliente;
 use App\Models\Rutina;
 use App\Models\RutinaCliente;
 use App\Models\RutinaEjercicio;
@@ -260,17 +262,22 @@ class ControladorRutina extends Controller
     /**
      * Asignar rutina a cliente(s).
      */
-    public function asignar(Request $request, int $id): JsonResponse
+    public function asignar(SolicitudAsignarRutina $request, int $id): JsonResponse
     {
         $coach = $this->getCoach($request);
 
         $rutina = Rutina::where('coach_id', $coach->id)->findOrFail($id);
 
-        $request->validate([
-            'cliente_ids' => 'required|array|min:1',
-            'cliente_ids.*' => 'exists:clientes,id',
-            'dias' => 'nullable|array',
-        ]);
+        // Verificar que todos los clientes pertenezcan al coach
+        $clientes = Cliente::where('creado_por', $coach->id)
+            ->whereIn('id', $request->cliente_ids)
+            ->get();
+
+        if ($clientes->count() !== count($request->cliente_ids)) {
+            return response()->json([
+                'mensaje' => 'Uno o más clientes no pertenecen a tu cuenta.',
+            ], 403);
+        }
 
         foreach ($request->cliente_ids as $clienteId) {
             RutinaCliente::updateOrCreate(

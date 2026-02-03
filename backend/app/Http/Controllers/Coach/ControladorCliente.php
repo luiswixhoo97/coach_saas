@@ -103,9 +103,19 @@ class ControladorCliente extends Controller
     {
         $coach = $this->getCoach($request);
 
-        $cliente = Cliente::with(['usuario', 'suscripciones.plan'])
+        $cliente = Cliente::with([
+            'usuario',
+            'suscripciones.plan',
+            'rutinasAsignadas.rutina',
+        ])
             ->where('creado_por', $coach->id)
             ->findOrFail($id);
+
+        // Cargar dietas de la suscripción activa si existe
+        $suscripcionActiva = $cliente->suscripcionActiva();
+        if ($suscripcionActiva) {
+            $suscripcionActiva->load('dietas');
+        }
 
         return response()->json([
             'datos' => new ClienteResource($cliente),

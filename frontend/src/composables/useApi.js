@@ -165,6 +165,11 @@ export function useApi() {
         headers['Authorization'] = `Bearer ${authStore.token}`
       }
 
+      // Sanctum SPA: CSRF obligatorio en peticiones POST
+      await ensureCsrfCookie()
+      const xsrf = getXsrfTokenFromCookie()
+      if (xsrf) headers['X-XSRF-TOKEN'] = xsrf
+
       const respuesta = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers,
@@ -172,10 +177,32 @@ export function useApi() {
         credentials: 'include'
       })
 
-      const datos = await respuesta.json()
+      let datos = {}
+      const contentType = respuesta.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        datos = await respuesta.json()
+      }
 
       if (!respuesta.ok) {
-        throw new Error(datos.mensaje || 'Error al subir archivo')
+        // Token CSRF inválido o caducado (419)
+        if (respuesta.status === 419) {
+          csrfPromise = null
+          throw new Error('Sesión de seguridad caducada. Recarga la página e intenta de nuevo.')
+        }
+        // Token expirado o no autorizado
+        if (respuesta.status === 401) {
+          authStore.cerrarSesion()
+          window.location.href = '/login'
+          throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.')
+        }
+        // Error de validación
+        if (respuesta.status === 422) {
+          const mensaje = datos.message || datos.mensaje || 'Error de validación'
+          const err = new Error(mensaje)
+          err.errores = datos.errors || {}
+          throw err
+        }
+        throw new Error(datos.mensaje || datos.message || 'Error al subir archivo')
       }
 
       return datos

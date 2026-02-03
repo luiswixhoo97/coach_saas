@@ -6,6 +6,7 @@ import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import BaseTable from '@/components/ui/BaseTable.vue'
 import RutinaDetalleModal from '@/components/coach/RutinaDetalleModal.vue'
 import RutinaCrearModal from '@/components/coach/RutinaCrearModal.vue'
+import AsignarRutinaModal from '@/components/coach/AsignarRutinaModal.vue'
 
 const { get, post, del, cargando } = useApi()
 const rutinas = ref([])
@@ -159,6 +160,25 @@ async function onEliminarRutina() {
   } catch (e) {
     errorDetalle.value = e.message || 'No se pudo eliminar la rutina.'
   }
+}
+
+// Modal asignar rutina
+const showAsignarRutinaModal = ref(false)
+const rutinaParaAsignar = ref(null)
+
+function onAsignarRutina() {
+  rutinaParaAsignar.value = rutinaDetalle.value
+  cerrarDetalleModal()
+  showAsignarRutinaModal.value = true
+}
+
+function cerrarAsignarRutinaModal() {
+  showAsignarRutinaModal.value = false
+  rutinaParaAsignar.value = null
+}
+
+async function onRutinaAsignada() {
+  await cargarRutinas(paginaActual.value)
 }
 
 onMounted(() => {
@@ -322,6 +342,15 @@ watch([nivelFiltro, objetivoFiltro], () => cargarRutinas(1))
         @edit="onEditarRutina"
         @clonar="onClonarRutina"
         @eliminar="onEliminarRutina"
+        @asignar="onAsignarRutina"
+      />
+
+      <!-- Modal asignar rutina a clientes -->
+      <AsignarRutinaModal
+        v-if="showAsignarRutinaModal"
+        :rutina-id="rutinaParaAsignar?.id"
+        @close="cerrarAsignarRutinaModal"
+        @asignada="onRutinaAsignada"
       />
 
       <!-- Modal crear rutina (wizard 2 pasos) -->

@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Coach;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Coach\SolicitudSubirDietaVarios;
+use App\Http\Resources\Coach\DietaClienteResource;
+use App\Models\Cliente;
 use App\Models\DietaCliente;
 use App\Models\Suscripcion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ControladorDieta extends Controller
@@ -45,7 +49,10 @@ class ControladorDieta extends Controller
     {
         $request->validate([
             'suscripcion_id' => 'required|exists:suscripciones,id',
-            'archivo' => 'required|file|mimes:pdf|max:10240',
+            'archivo' => 'nullable|file|mimes:pdf|max:10240',
+            'archivos' => 'nullable|array|min:1',
+            'archivos.*' => 'required|file|mimes:pdf|max:10240',
+            'desactivar_anteriores' => 'sometimes|boolean',
         ]);
 
         $coach = $this->getCoach($request);
@@ -53,20 +60,39 @@ class ControladorDieta extends Controller
         $suscripcion = Suscripcion::whereHas('plan', fn($q) => $q->where('coach_id', $coach->id))
             ->findOrFail($request->suscripcion_id);
 
-        // Desactivar dietas anteriores
-        DietaCliente::where('suscripcion_id', $suscripcion->id)->update(['activo' => false]);
+        // Desactivar dietas anteriores si se solicita
+        if ($request->boolean('desactivar_anteriores')) {
+            DietaCliente::where('suscripcion_id', $suscripcion->id)->update(['activo' => false]);
+        }
 
-        $path = $request->file('archivo')->store('dietas', 'public');
+        $archivos = [];
+        if ($request->hasFile('archivo')) {
+            $archivos[] = $request->file('archivo');
+        }
+        if ($request->hasFile('archivos')) {
+            $archivos = array_merge($archivos, $request->file('archivos'));
+        }
 
-        $dieta = DietaCliente::create([
-            'suscripcion_id' => $suscripcion->id,
-            'archivo' => $path,
-            'activo' => true,
-        ]);
+        if (empty($archivos)) {
+            return response()->json([
+                'mensaje' => 'Debes seleccionar al menos un archivo.',
+            ], 422);
+        }
+
+        $dietasCreadas = [];
+        foreach ($archivos as $archivo) {
+            $path = $archivo->store('dietas', 'public');
+            $dieta = DietaCliente::create([
+                'suscripcion_id' => $suscripcion->id,
+                'archivo' => $path,
+                'activo' => true,
+            ]);
+            $dietasCreadas[] = $dieta;
+        }
 
         return response()->json([
-            'mensaje' => 'Dieta subida correctamente.',
-            'datos' => $dieta,
+            'mensaje' => count($dietasCreadas) === 1 ? 'Dieta subida correctamente.' : 'Dietas subidas correctamente.',
+            'datos' => count($dietasCreadas) === 1 ? $dietasCreadas[0] : DietaClienteResource::collection($dietasCreadas),
         ], 201);
     }
 
@@ -121,5 +147,92 @@ class ControladorDieta extends Controller
             ->findOrFail($id);
 
         return Storage::disk('public')->download($dieta->archivo);
+    }
+
+    public function ver(Request $request, int $id)
+    {
+        $coach = $this->getCoach($request);
+
+        $dieta = DietaCliente::whereHas('suscripcion.plan', fn($q) => $q->where('coach_id', $coach->id))
+            ->findOrFail($id);
+
+        $path = Storage::disk('public')->path($dieta->archivo);
+        
+        return response()->file($path, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . basename($dieta->archivo) . '"',
+        ]);
+    }
+
+    /**
+     * Subir dieta a varios clientes.
+     */
+    public function subirVarios(SolicitudSubirDietaVarios $request): JsonResponse
+    {
+        $coach = $this->getCoach($request);
+
+        $clienteIds = $request->cliente_ids;
+        $archivos = $request->file('archivos');
+
+        // Verificar que todos los clientes pertenezcan al coach
+        $clientes = Cliente::where('creado_por', $coach->id)
+            ->whereIn('id', $clienteIds)
+            ->get();
+
+        if ($clientes->count() !== count($clienteIds)) {
+            return response()->json([
+                'mensaje' => 'Uno o más clientes no pertenecen a tu cuenta.',
+            ], 403);
+        }
+
+        // Obtener suscripciones activas de los clientes
+        $suscripciones = [];
+        foreach ($clientes as $cliente) {
+            $suscripcionActiva = $cliente->suscripcionActiva();
+            if ($suscripcionActiva) {
+                $suscripciones[$cliente->id] = $suscripcionActiva;
+            }
+        }
+
+        if (empty($suscripciones)) {
+            return response()->json([
+                'mensaje' => 'Los clientes seleccionados no tienen suscripciones activas.',
+            ], 422);
+        }
+
+        // Crear dietas: N clientes × M archivos
+        // Almacenar cada archivo una vez y reutilizar la ruta para todos los clientes
+        $dietasCreadas = [];
+        
+        DB::transaction(function () use ($suscripciones, $archivos, &$dietasCreadas) {
+            // Almacenar cada archivo una vez
+            $archivosAlmacenados = [];
+            foreach ($archivos as $archivo) {
+                $path = $archivo->store('dietas', 'public');
+                $archivosAlmacenados[] = $path;
+            }
+            
+            // Crear una entrada en dieta_cliente por cada combinación cliente × archivo
+            // Reutilizamos el mismo path para todos los clientes (mismo archivo físico)
+            foreach ($suscripciones as $suscripcion) {
+                foreach ($archivosAlmacenados as $path) {
+                    $dieta = DietaCliente::create([
+                        'suscripcion_id' => $suscripcion->id,
+                        'archivo' => $path,
+                        'activo' => true,
+                    ]);
+                    $dietasCreadas[] = $dieta;
+                }
+            }
+        });
+
+        return response()->json([
+            'mensaje' => 'Dietas subidas correctamente a ' . count($suscripciones) . ' cliente(s).',
+            'datos' => [
+                'clientes' => count($suscripciones),
+                'archivos' => count($archivos),
+                'total_dietas' => count($dietasCreadas),
+            ],
+        ], 201);
     }
 }
