@@ -114,4 +114,14 @@ class Cliente extends ModeloBase
     {
         return $this->fecha_nacimiento?->age;
     }
+
+    /**
+     * Indica si el cliente tiene al menos una dieta activa (en alguna suscripción).
+     */
+    public function tieneDietaActiva(): bool
+    {
+        return $this->suscripciones()
+            ->whereHas('dietas', fn($q) => $q->where('activo', true))
+            ->exists();
+    }
 }

@@ -16,6 +16,7 @@ class RutinaEjercicio extends ModeloBase
         'repeticiones',
         'descanso_segundos',
         'bloque',
+        'nota',
     ];
 
     protected function casts(): array

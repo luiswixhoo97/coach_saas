@@ -13,7 +13,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['close'])
+const emit = defineEmits(['close', 'edit', 'clonar', 'eliminar'])
 
 const NIVELES = [
   { value: 'principiante', label: 'Principiante' },
@@ -44,7 +44,7 @@ const ejerciciosPorBloque = computed(() => {
 
 <template>
   <Teleport to="body">
-    <div class="rutina-modal__overlay" @click.self="$emit('close')">
+    <div class="rutina-modal__overlay" @click.self="emit('close')">
       <div class="rutina-modal">
         <!-- Header -->
         <div class="rutina-modal__header">
@@ -55,7 +55,7 @@ const ejerciciosPorBloque = computed(() => {
             type="button"
             class="rutina-modal__close"
             aria-label="Cerrar"
-            @click="$emit('close')"
+            @click="emit('close')"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6L6 18M6 6l12 12"/>
@@ -106,14 +106,26 @@ const ejerciciosPorBloque = computed(() => {
                   <span class="rutina-modal__ejercicio-datos">
                     {{ e.series ?? '—' }} series × {{ e.repeticiones ?? '—' }} rep · {{ e.descanso_segundos ?? 0 }} s descanso
                   </span>
+                  <span v-if="e.nota" class="rutina-modal__ejercicio-nota">{{ e.nota }}</span>
                 </div>
               </div>
             </div>
           </template>
         </div>
 
+        <div v-if="rutina && !rutina.error" class="rutina-modal__footer rutina-modal__footer--actions">
+          <button type="button" class="rutina-modal__btn rutina-modal__btn--edit" @click="emit('edit')">
+            Editar
+          </button>
+          <button type="button" class="rutina-modal__btn rutina-modal__btn--clonar" @click="emit('clonar')">
+            Clonar
+          </button>
+          <button type="button" class="rutina-modal__btn rutina-modal__btn--eliminar" @click="emit('eliminar')">
+            Eliminar
+          </button>
+        </div>
         <div class="rutina-modal__footer">
-          <button type="button" class="rutina-modal__btn" @click="$emit('close')">
+          <button type="button" class="rutina-modal__btn" @click="emit('close')">
             Cerrar
           </button>
         </div>
@@ -276,17 +288,17 @@ const ejerciciosPorBloque = computed(() => {
   padding: 1rem 0;
 }
 
-/* Bloques y ejercicios */
+/* Bloques y ejercicios (cada bloque con borde verde para distinguirlos) */
 .rutina-modal__bloque {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid #252525;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #00D261;
+  border-radius: 12px;
+  background: #161616;
 }
 
 .rutina-modal__bloque:first-of-type {
-  margin-top: 0.5rem;
-  padding-top: 0;
-  border-top: none;
+  margin-top: 0.75rem;
 }
 
 .rutina-modal__bloque-title {
@@ -325,10 +337,34 @@ const ejerciciosPorBloque = computed(() => {
   color: #697586;
 }
 
+.rutina-modal__ejercicio-nota {
+  font-size: 0.75rem;
+  color: #00D261;
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
 .rutina-modal__footer {
   padding: 1rem 1.25rem;
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
   border-top: 1px solid #252525;
+}
+
+.rutina-modal__footer--actions {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-top: 1px solid #252525;
+}
+
+.rutina-modal__footer--actions .rutina-modal__btn {
+  flex: 1;
+  width: auto;
+  min-height: 2.75rem;
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
 }
 
 .rutina-modal__btn {
@@ -341,11 +377,45 @@ const ejerciciosPorBloque = computed(() => {
   border: 1px solid rgba(0, 210, 97, 0.4);
   border-radius: 12px;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .rutina-modal__btn:hover {
   background: rgba(0, 210, 97, 0.1);
   border-color: #00D261;
+}
+
+.rutina-modal__btn--edit {
+  color: #00D261;
+  background: transparent;
+  border: 1px solid rgba(0, 210, 97, 0.4);
+}
+
+.rutina-modal__btn--edit:hover {
+  background: rgba(0, 210, 97, 0.1);
+  border-color: #00D261;
+}
+
+.rutina-modal__btn--clonar {
+  color: #2970FF;
+  background: transparent;
+  border: 1px solid rgba(41, 112, 255, 0.4);
+}
+
+.rutina-modal__btn--clonar:hover {
+  background: rgba(41, 112, 255, 0.1);
+  border-color: #2970FF;
+}
+
+.rutina-modal__btn--eliminar {
+  color: #EF5C5C;
+  background: transparent;
+  border: 1px solid #EF5C5C;
+}
+
+.rutina-modal__btn--eliminar:hover {
+  color: #EF5C5C;
+  background: rgba(239, 92, 92, 0.1);
+  border-color: #EF5C5C;
 }
 </style>

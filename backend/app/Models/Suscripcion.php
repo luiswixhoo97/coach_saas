@@ -79,6 +79,16 @@ class Suscripcion extends ModeloBase
         return $query->where('fecha_fin', '>=', now());
     }
 
+    /**
+     * Suscripciones activas cuyo vencimiento está en los próximos N días.
+     */
+    public function scopeVenceProximo($query, int $dias = 30)
+    {
+        return $query->activas()
+            ->where('fecha_fin', '>=', now()->startOfDay())
+            ->where('fecha_fin', '<=', now()->addDays($dias)->endOfDay());
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Helpers

@@ -142,7 +142,7 @@ class RelacionesSeeder extends Seeder
         $ejercicio1 = Ejercicio::create([
             'coach_id' => $coach->id,
             'nombre' => 'Sentadillas',
-            'grupo_muscular' => 'piernas',
+            'grupo_muscular' => 'pierna',
             'video_url' => null,
         ]);
 

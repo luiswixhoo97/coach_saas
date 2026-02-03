@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Coach;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\DietaCliente;
 use App\Models\Pago;
 use App\Models\Suscripcion;
 use Illuminate\Http\JsonResponse;
@@ -120,11 +121,19 @@ class ControladorPerfil extends Controller
             ->whereYear('fecha', now()->year)
             ->sum('monto');
 
+        $clientesConDieta = DietaCliente::clientesConDietaCount($coach->id);
+
+        $clientesVencimientoProximo = Cliente::delCoach($coach->id)
+            ->whereHas('suscripciones', fn($q) => $q->venceProximo(30))
+            ->count();
+
         return response()->json([
             'datos' => [
                 'clientes' => [
                     'activos' => $clientesActivos,
                     'total' => $clientesTotal,
+                    'con_dieta' => $clientesConDieta,
+                    'vencimiento_proximo' => $clientesVencimientoProximo,
                 ],
                 'suscripciones_activas' => $suscripcionesActivas,
                 'ingresos_mes' => $ingresosMes,

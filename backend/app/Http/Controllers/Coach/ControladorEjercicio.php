@@ -25,15 +25,20 @@ class ControladorEjercicio extends Controller
 
         $query = Ejercicio::where('coach_id', $coach->id);
 
-        if ($request->has('grupo_muscular')) {
+        if ($request->has('grupo_muscular') && trim($request->grupo_muscular) !== '') {
             $query->where('grupo_muscular', $request->grupo_muscular);
         }
 
-        if ($request->has('buscar')) {
-            $query->where('nombre', 'like', "%{$request->buscar}%");
+        if ($request->has('buscar') && trim($request->buscar) !== '') {
+            $buscar = '%' . trim($request->buscar) . '%';
+            $query->where(function ($q) use ($buscar) {
+                $q->where('nombre', 'like', $buscar)
+                    ->orWhere('grupo_muscular', 'like', $buscar);
+            });
         }
 
-        $ejercicios = $query->orderBy('nombre')->paginate(15);
+        $perPage = min(200, max(1, (int) $request->input('per_page', 15)));
+        $ejercicios = $query->orderBy('nombre')->paginate($perPage);
 
         return new PaginacionCollection($ejercicios, EjercicioResource::class);
     }

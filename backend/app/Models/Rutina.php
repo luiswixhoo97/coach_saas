@@ -43,8 +43,10 @@ class Rutina extends ModeloBase
     public function ejercicios(): BelongsToMany
     {
         return $this->belongsToMany(Ejercicio::class, 'rutina_ejercicios')
-            ->withPivot(['series', 'repeticiones', 'descanso_segundos', 'bloque'])
-            ->withTimestamps();
+            ->withPivot(['id', 'series', 'repeticiones', 'descanso_segundos', 'bloque', 'nota'])
+            ->withTimestamps()
+            ->orderByPivot('bloque')
+            ->orderByPivot('id');
     }
 
     public function rutinaEjercicios(): HasMany

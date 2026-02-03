@@ -39,9 +39,14 @@ class ControladorCliente extends Controller
             $query->where('activo', $request->boolean('activo'));
         }
 
-        if ($request->has('buscar')) {
-            $buscar = $request->buscar;
-            $query->whereHas('usuario', fn($q) => $q->where('email', 'like', "%{$buscar}%"));
+        if ($request->has('buscar') && trim($request->buscar) !== '') {
+            $buscar = '%' . trim($request->buscar) . '%';
+            $query->where(function ($q) use ($buscar) {
+                $q->whereHas('usuario', fn($uq) => $uq->where('email', 'like', $buscar))
+                    ->orWhere('nombre', 'like', $buscar)
+                    ->orWhere('apellido_paterno', 'like', $buscar)
+                    ->orWhere('apellido_materno', 'like', $buscar);
+            });
         }
 
         $clientes = $query->orderBy('created_at', 'desc')->paginate(15);

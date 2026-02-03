@@ -21,6 +21,7 @@ class ClienteResource extends JsonResource
             'altura' => $this->altura,
             'objetivo' => $this->objetivo,
             'activo' => $this->activo,
+            'tiene_dieta' => $this->tieneDietaActiva(),
             'coach' => new CoachResource($this->whenLoaded('coach')),
             'suscripcion_activa' => $this->when(
                 method_exists($this->resource, 'suscripcionActiva') && $this->suscripcionActiva(),

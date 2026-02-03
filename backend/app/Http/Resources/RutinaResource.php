@@ -27,6 +27,10 @@ class RutinaResource extends JsonResource
                 isset($this->clientes_asignados_count),
                 $this->clientes_asignados_count
             ),
+            'ejercicios_count' => $this->when(
+                isset($this->rutina_ejercicios_count),
+                $this->rutina_ejercicios_count
+            ),
             'created_at' => $this->created_at->format('Y-m-d H:i'),
         ];
     }

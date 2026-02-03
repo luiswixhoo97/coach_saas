@@ -1,24 +1,22 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import Swal from 'sweetalert2'
 import { useApi } from '@/composables/useApi'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import BaseTable from '@/components/ui/BaseTable.vue'
 import RutinaDetalleModal from '@/components/coach/RutinaDetalleModal.vue'
+import RutinaCrearModal from '@/components/coach/RutinaCrearModal.vue'
 
-const { get, post, cargando } = useApi()
+const { get, post, del, cargando } = useApi()
 const rutinas = ref([])
 const meta = ref({ total: 0, por_pagina: 15, pagina_actual: 1, ultima_pagina: 1 })
 const error = ref('')
 const nivelFiltro = ref('')
 const objetivoFiltro = ref('')
 
-// Modal crear rutina
-const showFormModal = ref(false)
-const formNombre = ref('')
-const formNivel = ref('')
-const formObjetivo = ref('')
-const formError = ref('')
-const formSaving = ref(false)
+// Modal crear rutina (o editar si rutinaParaEditar está definida)
+const showCrearModal = ref(false)
+const rutinaParaEditar = ref(null)
 
 // Modal detalle / editar: rutina con ejercicios (series, repeticiones, bloque)
 const showDetalleModal = ref(false)
@@ -77,16 +75,17 @@ function checkMobile() {
 }
 
 function abrirCrear() {
-  formNombre.value = ''
-  formNivel.value = ''
-  formObjetivo.value = ''
-  formError.value = ''
-  showFormModal.value = true
+  rutinaParaEditar.value = null
+  showCrearModal.value = true
 }
 
-function cerrarFormModal() {
-  showFormModal.value = false
-  formError.value = ''
+function cerrarCrearModal() {
+  showCrearModal.value = false
+  rutinaParaEditar.value = null
+}
+
+function onRutinaCreada() {
+  cargarRutinas(1)
 }
 
 async function abrirDetalle(r) {
@@ -110,32 +109,55 @@ function cerrarDetalleModal() {
   errorDetalle.value = ''
 }
 
-async function enviarFormulario() {
-  formError.value = ''
-  const nombre = formNombre.value.trim()
-  const nivel = formNivel.value
-  const objetivo = formObjetivo.value.trim()
-  if (!nombre) {
-    formError.value = 'El nombre de la rutina es requerido.'
-    return
-  }
-  if (!nivel) {
-    formError.value = 'El nivel es requerido.'
-    return
-  }
-  if (!objetivo) {
-    formError.value = 'El objetivo es requerido.'
-    return
-  }
-  formSaving.value = true
+function onEditarRutina() {
+  if (!rutinaDetalle.value?.id) return
+  rutinaParaEditar.value = { ...rutinaDetalle.value }
+  cerrarDetalleModal()
+  showCrearModal.value = true
+}
+
+async function onClonarRutina() {
+  const id = rutinaDetalle.value?.id
+  if (!id) return
   try {
-    await post('/coach/rutinas', { nombre, nivel, objetivo })
-    cerrarFormModal()
-    await cargarRutinas(1)
+    const res = await post(`/coach/rutinas/${id}/duplicar`, {})
+    const nuevaRutina = res.datos ?? res.data?.datos ?? res
+    cerrarDetalleModal()
+    rutinaParaEditar.value = nuevaRutina && typeof nuevaRutina === 'object' ? { ...nuevaRutina } : nuevaRutina
+    showCrearModal.value = true
+    cargarRutinas(1)
   } catch (e) {
-    formError.value = e.errores ? Object.values(e.errores).flat().join(' ') : (e.message || 'Error al guardar.')
-  } finally {
-    formSaving.value = false
+    errorDetalle.value = e.message || 'No se pudo clonar la rutina.'
+  }
+}
+
+async function onEliminarRutina() {
+  const id = rutinaDetalle.value?.id
+  const nombre = rutinaDetalle.value?.nombre || 'esta rutina'
+  if (!id) return
+  const result = await Swal.fire({
+    title: '¿Eliminar rutina?',
+    text: `Se eliminará "${nombre}". Esta acción no se puede deshacer.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#EF5C5C',
+    cancelButtonColor: '#697586',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  })
+  if (!result.isConfirmed) return
+  try {
+    await del(`/coach/rutinas/${id}`)
+    await Swal.fire({
+      title: 'Eliminada',
+      text: 'La rutina se ha eliminado correctamente.',
+      icon: 'success',
+      confirmButtonColor: '#00D261'
+    })
+    cargarRutinas(1)
+    cerrarDetalleModal()
+  } catch (e) {
+    errorDetalle.value = e.message || 'No se pudo eliminar la rutina.'
   }
 }
 
@@ -198,6 +220,8 @@ watch([nivelFiltro, objetivoFiltro], () => cargarRutinas(1))
               <div class="rutinas__skeleton-cell" />
               <div class="rutinas__skeleton-cell" />
               <div class="rutinas__skeleton-cell" />
+              <div class="rutinas__skeleton-cell" />
+              <div class="rutinas__skeleton-cell" />
             </div>
           </div>
           <div v-else-if="!rutinas.length" class="rutinas__empty">
@@ -213,6 +237,7 @@ watch([nivelFiltro, objetivoFiltro], () => cargarRutinas(1))
                   <th class="rutinas__th">Nombre</th>
                   <th class="rutinas__th">Nivel</th>
                   <th class="rutinas__th">Objetivo</th>
+                  <th class="rutinas__th">Ejercicios</th>
                   <th class="rutinas__th">Clientes</th>
                   <th class="rutinas__th rutinas__th--acciones">Acciones</th>
                 </tr>
@@ -222,6 +247,7 @@ watch([nivelFiltro, objetivoFiltro], () => cargarRutinas(1))
                   <td class="rutinas__td">{{ r.nombre || '—' }}</td>
                   <td class="rutinas__td">{{ labelNivel(r.nivel) }}</td>
                   <td class="rutinas__td">{{ r.objetivo || '—' }}</td>
+                  <td class="rutinas__td">{{ r.ejercicios_count ?? 0 }}</td>
                   <td class="rutinas__td">{{ r.clientes_asignados_count ?? 0 }}</td>
                   <td class="rutinas__td rutinas__td--acciones">
                     <button type="button" class="rutinas__action-btn rutinas__action-btn--ver" @click="abrirDetalle(r)" aria-label="Ver rutina">Ver</button>
@@ -257,7 +283,10 @@ watch([nivelFiltro, objetivoFiltro], () => cargarRutinas(1))
                 <span class="rutinas__nombre">{{ r.nombre || '—' }}</span>
                 <span class="rutinas__meta">{{ labelNivel(r.nivel) }} · {{ r.objetivo || '—' }}</span>
               </div>
-              <span class="rutinas__badge">{{ r.clientes_asignados_count ?? 0 }} clientes</span>
+              <div class="rutinas__badges">
+                <span class="rutinas__badge">{{ r.ejercicios_count ?? 0 }} ejercicios</span>
+                <span class="rutinas__badge">{{ r.clientes_asignados_count ?? 0 }} clientes</span>
+              </div>
             </div>
           </template>
         </BaseTable>
@@ -290,36 +319,18 @@ watch([nivelFiltro, objetivoFiltro], () => cargarRutinas(1))
         v-if="showDetalleModal"
         :rutina="rutinaParaModal"
         @close="cerrarDetalleModal"
+        @edit="onEditarRutina"
+        @clonar="onClonarRutina"
+        @eliminar="onEliminarRutina"
       />
 
-      <!-- Modal crear rutina -->
-      <Teleport to="body">
-        <Transition name="modal">
-          <div v-if="showFormModal" class="rutinas__modal-overlay" @click.self="cerrarFormModal">
-            <div class="rutinas__modal" role="dialog" aria-modal="true" aria-labelledby="rutinas-modal-title">
-              <h3 id="rutinas-modal-title" class="rutinas__modal-title">Crear rutina</h3>
-              <form @submit.prevent="enviarFormulario" class="rutinas__form">
-                <div v-if="formError" class="rutinas__form-error">{{ formError }}</div>
-                <label for="rutina-nombre" class="rutinas__form-label">Nombre</label>
-                <input id="rutina-nombre" v-model="formNombre" type="text" class="rutinas__form-input" placeholder="Nombre de la rutina" required />
-                <label for="rutina-nivel" class="rutinas__form-label">Nivel</label>
-                <select id="rutina-nivel" v-model="formNivel" class="rutinas__form-select" required aria-label="Nivel">
-                  <option value="">Selecciona nivel</option>
-                  <option v-for="n in NIVELES" :key="n.value" :value="n.value">{{ n.label }}</option>
-                </select>
-                <label for="rutina-objetivo" class="rutinas__form-label">Objetivo</label>
-                <input id="rutina-objetivo" v-model="formObjetivo" type="text" class="rutinas__form-input" placeholder="Ej. hipertrofia, fuerza, bajar peso" required aria-label="Objetivo" />
-                <div class="rutinas__modal-actions">
-                  <button type="button" class="rutinas__modal-btn rutinas__modal-btn--secondary" @click="cerrarFormModal">Cancelar</button>
-                  <button type="submit" class="rutinas__modal-btn rutinas__modal-btn--primary" :disabled="formSaving">
-                    {{ formSaving ? 'Creando…' : 'Crear' }}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </Transition>
-      </Teleport>
+      <!-- Modal crear rutina (wizard 2 pasos) -->
+      <RutinaCrearModal
+        v-if="showCrearModal"
+        :rutina-para-editar="rutinaParaEditar"
+        @close="cerrarCrearModal"
+        @created="onRutinaCreada"
+      />
     </div>
   </div>
 </template>
@@ -524,6 +535,13 @@ watch([nivelFiltro, objetivoFiltro], () => cargarRutinas(1))
   color: var(--color-label-secondary);
 }
 
+.rutinas__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
 .rutinas__badge {
   font-size: 0.6875rem;
   font-weight: 500;
@@ -700,143 +718,5 @@ watch([nivelFiltro, objetivoFiltro], () => cargarRutinas(1))
 .rutinas__page-info {
   font-size: 0.8125rem;
   color: var(--color-label-secondary);
-}
-
-/* Modal crear rutina */
-.rutinas__modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: 1rem;
-}
-
-.rutinas__modal {
-  background: #161616;
-  border-radius: 16px;
-  padding: 1.25rem;
-  width: 100%;
-  max-width: 24rem;
-  border: 1px solid #252525;
-}
-
-.rutinas__modal-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-label-tertiary);
-  margin: 0 0 1rem;
-}
-
-.rutinas__form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.rutinas__form-error {
-  font-size: 0.8125rem;
-  color: var(--color-danger-500);
-  padding: 0.5rem 0;
-}
-
-.rutinas__form-label {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-label-secondary);
-}
-
-.rutinas__form-input,
-.rutinas__form-select {
-  background: #1e1e1e;
-  border: 1px solid #252525;
-  border-radius: 12px;
-  padding: 0.625rem 0.875rem;
-  font-size: 0.875rem;
-  color: var(--color-label-tertiary);
-  width: 100%;
-}
-
-.rutinas__form-input::placeholder {
-  color: var(--color-label-secondary);
-}
-
-.rutinas__form-input:focus,
-.rutinas__form-input:focus-visible,
-.rutinas__form-select:focus,
-.rutinas__form-select:focus-visible {
-  outline: none;
-  border-color: var(--color-success-500);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success-500) 35%, transparent);
-}
-
-.rutinas__form-select {
-  accent-color: var(--color-success-500);
-}
-
-.rutinas__form-select option {
-  background: #1e1e1e;
-  color: var(--color-label-tertiary);
-}
-
-.rutinas__form-select option:checked {
-  background: var(--color-success-500);
-  color: #0a0a0a;
-}
-
-.rutinas__modal-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  margin-top: 0.5rem;
-}
-
-.rutinas__modal-btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.rutinas__modal-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.rutinas__modal-btn--secondary {
-  background: #252525;
-  color: var(--color-label-tertiary);
-  border: 1px solid #252525;
-}
-
-.rutinas__modal-btn--primary {
-  background: var(--color-success-500);
-  color: #0a0a0a;
-  border: none;
-}
-
-.rutinas__modal-btn--primary:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s ease;
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-.modal-enter-active .rutinas__modal,
-.modal-leave-active .rutinas__modal {
-  transition: transform 0.2s ease;
-}
-.modal-enter-from .rutinas__modal,
-.modal-leave-to .rutinas__modal {
-  transform: scale(0.95);
 }
 </style>

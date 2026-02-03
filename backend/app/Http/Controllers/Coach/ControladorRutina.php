@@ -28,7 +28,7 @@ class ControladorRutina extends Controller
     {
         $coach = $this->getCoach($request);
 
-        $query = Rutina::withCount('clientesAsignados')
+        $query = Rutina::withCount(['clientesAsignados', 'rutinaEjercicios'])
             ->where('coach_id', $coach->id);
 
         if ($request->has('nivel')) {
@@ -148,6 +148,7 @@ class ControladorRutina extends Controller
                     'repeticiones' => $ejercicio->pivot->repeticiones,
                     'descanso_segundos' => $ejercicio->pivot->descanso_segundos,
                     'bloque' => $ejercicio->pivot->bloque,
+                    'nota' => $ejercicio->pivot->nota ?? null,
                 ]);
             }
 
@@ -192,6 +193,7 @@ class ControladorRutina extends Controller
             'repeticiones' => 'required|integer|min:1',
             'descanso_segundos' => 'required|integer|min:0',
             'bloque' => 'required|integer|min:1',
+            'nota' => 'nullable|string|max:1000',
         ]);
 
         RutinaEjercicio::create([
@@ -201,6 +203,7 @@ class ControladorRutina extends Controller
             'repeticiones' => $request->repeticiones,
             'descanso_segundos' => $request->descanso_segundos,
             'bloque' => $request->bloque,
+            'nota' => $request->nota,
         ]);
 
         return response()->json([
@@ -209,24 +212,25 @@ class ControladorRutina extends Controller
     }
 
     /**
-     * Actualizar ejercicio en rutina.
+     * Actualizar una fila de rutina_ejercicios por su id (pivot), para soportar el mismo ejercicio en varios bloques.
      */
-    public function actualizarEjercicio(Request $request, int $id, int $ejercicioId): JsonResponse
+    public function actualizarEjercicio(Request $request, int $id, int $pivotId): JsonResponse
     {
         $coach = $this->getCoach($request);
 
-        $rutina = Rutina::where('coach_id', $coach->id)->findOrFail($id);
+        Rutina::where('coach_id', $coach->id)->findOrFail($id);
+
+        $pivot = RutinaEjercicio::where('rutina_id', $id)->where('id', $pivotId)->firstOrFail();
 
         $request->validate([
             'series' => 'sometimes|integer|min:1',
             'repeticiones' => 'sometimes|integer|min:1',
             'descanso_segundos' => 'sometimes|integer|min:0',
             'bloque' => 'sometimes|integer|min:1',
+            'nota' => 'nullable|string|max:1000',
         ]);
 
-        RutinaEjercicio::where('rutina_id', $rutina->id)
-            ->where('ejercicio_id', $ejercicioId)
-            ->update($request->only(['series', 'repeticiones', 'descanso_segundos', 'bloque']));
+        $pivot->update($request->only(['series', 'repeticiones', 'descanso_segundos', 'bloque', 'nota']));
 
         return response()->json([
             'mensaje' => 'Ejercicio actualizado en la rutina.',
@@ -234,17 +238,19 @@ class ControladorRutina extends Controller
     }
 
     /**
-     * Quitar ejercicio de rutina.
+     * Quitar una fila de rutina_ejercicios por su id (pivot), para soportar el mismo ejercicio en varios bloques.
      */
-    public function quitarEjercicio(Request $request, int $id, int $ejercicioId): JsonResponse
+    public function quitarEjercicio(Request $request, int $id, int $pivotId): JsonResponse
     {
         $coach = $this->getCoach($request);
 
-        $rutina = Rutina::where('coach_id', $coach->id)->findOrFail($id);
+        Rutina::where('coach_id', $coach->id)->findOrFail($id);
 
-        RutinaEjercicio::where('rutina_id', $rutina->id)
-            ->where('ejercicio_id', $ejercicioId)
-            ->delete();
+        $deleted = RutinaEjercicio::where('rutina_id', $id)->where('id', $pivotId)->delete();
+
+        if ($deleted === 0) {
+            abort(404, 'No se encontró el ejercicio en la rutina.');
+        }
 
         return response()->json([
             'mensaje' => 'Ejercicio eliminado de la rutina.',
