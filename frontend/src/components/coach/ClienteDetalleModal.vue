@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useApi } from '@/composables/useApi'
 import Swal from 'sweetalert2'
+import RutinaDetalleModal from '@/components/coach/RutinaDetalleModal.vue'
 
 /**
  * ClienteDetalleModal - Detalle del cliente en móvil (bottom sheet).
@@ -23,6 +24,11 @@ const showPreviewModal = ref(false)
 const dietaPreview = ref(null)
 const cargandoPreview = ref(false)
 
+// Estado para el modal de detalle de rutina
+const showRutinaDetalleModal = ref(false)
+const rutinaDetalle = ref(null)
+const cargandoRutina = ref(false)
+
 function nombreCompleto(c) {
   if (!c) return ''
   const partes = [c.nombre, c.apellido_paterno, c.apellido_materno].filter(Boolean)
@@ -41,6 +47,75 @@ function diasTexto(dias) {
     domingo: 'Dom'
   }
   return dias.map(d => diasLabels[d] || d).join(', ')
+}
+
+function diaCompleto(dia) {
+  const diasLabels = {
+    lunes: 'Lunes',
+    martes: 'Martes',
+    miércoles: 'Miércoles',
+    jueves: 'Jueves',
+    viernes: 'Viernes',
+    sábado: 'Sábado',
+    domingo: 'Domingo'
+  }
+  return diasLabels[dia] || dia
+}
+
+function rutinasPorDia(rutinasAsignadas) {
+  if (!rutinasAsignadas || !Array.isArray(rutinasAsignadas)) return {}
+  
+  const rutinasPorDiaMap = {}
+  
+  rutinasAsignadas.forEach(rutina => {
+    if (rutina.dias && Array.isArray(rutina.dias)) {
+      rutina.dias.forEach(dia => {
+        if (!rutinasPorDiaMap[dia]) {
+          rutinasPorDiaMap[dia] = []
+        }
+        rutinasPorDiaMap[dia].push(rutina)
+      })
+    }
+  })
+  
+  // Ordenar días según el orden de la semana
+  const ordenDias = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+  const ordenado = {}
+  ordenDias.forEach(dia => {
+    if (rutinasPorDiaMap[dia]) {
+      ordenado[dia] = rutinasPorDiaMap[dia]
+    }
+  })
+  
+  return ordenado
+}
+
+async function verDetalleRutina(rutina) {
+  if (!rutina?.rutina_id) return
+  
+  showRutinaDetalleModal.value = true
+  rutinaDetalle.value = null
+  cargandoRutina.value = true
+  
+  try {
+    const res = await get(`/coach/rutinas/${rutina.rutina_id}`)
+    rutinaDetalle.value = res.datos ?? res.data ?? res
+  } catch (e) {
+    await Swal.fire({
+      title: 'Error',
+      text: e.message || 'No se pudo cargar el detalle de la rutina.',
+      icon: 'error',
+      confirmButtonColor: '#00D261'
+    })
+    showRutinaDetalleModal.value = false
+  } finally {
+    cargandoRutina.value = false
+  }
+}
+
+function cerrarRutinaDetalleModal() {
+  showRutinaDetalleModal.value = false
+  rutinaDetalle.value = null
 }
 
 async function previewDieta(dieta) {
@@ -273,21 +348,45 @@ async function quitarDieta(dieta) {
               <h3 class="cliente-modal__section-title">Rutinas asignadas</h3>
               <button
                 type="button"
-                class="cliente-modal__section-btn"
+                class="cliente-modal__section-btn cliente-modal__section-btn--assign"
                 @click="emit('asignar-rutina', cliente)"
               >
-                Asignar rutina
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                  <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
+                </svg>
+                <span>Asignar rutina</span>
               </button>
             </div>
             <div v-if="cliente.rutinas_asignadas && cliente.rutinas_asignadas.length > 0" class="cliente-modal__rutinas">
               <div
-                v-for="rutina in cliente.rutinas_asignadas"
-                :key="rutina.id"
-                class="cliente-modal__rutina-item"
+                v-for="(rutinas, dia) in rutinasPorDia(cliente.rutinas_asignadas)"
+                :key="dia"
+                class="cliente-modal__rutina-dia-group"
               >
-                <div class="cliente-modal__rutina-info">
-                  <span class="cliente-modal__rutina-nombre">{{ rutina.nombre || '—' }}</span>
-                  <span class="cliente-modal__rutina-dias">{{ diasTexto(rutina.dias) }}</span>
+                <div class="cliente-modal__rutina-dia-header">
+                  {{ diaCompleto(dia) }}
+                </div>
+                <div class="cliente-modal__rutina-dia-content">
+                  <div
+                    v-for="rutina in rutinas"
+                    :key="`${dia}-${rutina.id}`"
+                    class="cliente-modal__rutina-item cliente-modal__rutina-item--clickable"
+                    @click="verDetalleRutina(rutina)"
+                  >
+                    <div class="cliente-modal__rutina-info">
+                      <span class="cliente-modal__rutina-nombre">{{ rutina.nombre || '—' }}</span>
+                      <span class="cliente-modal__rutina-ejercicios">
+                        {{ rutina.ejercicios_count || 0 }} {{ rutina.ejercicios_count === 1 ? 'ejercicio' : 'ejercicios' }}
+                      </span>
+                    </div>
+                    <svg class="cliente-modal__rutina-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>
@@ -302,10 +401,15 @@ async function quitarDieta(dieta) {
               <h3 class="cliente-modal__section-title">Dieta</h3>
               <button
                 type="button"
-                class="cliente-modal__section-btn"
+                class="cliente-modal__section-btn cliente-modal__section-btn--upload"
                 @click="emit('subir-dieta', cliente)"
               >
-                Subir archivos
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span>Subir archivos</span>
               </button>
             </div>
             <div v-if="cliente.dietas && cliente.dietas.length > 0" class="cliente-modal__dietas">
@@ -405,6 +509,13 @@ async function quitarDieta(dieta) {
         </div>
       </div>
     </Teleport>
+
+    <!-- Modal Detalle Rutina -->
+    <RutinaDetalleModal
+      v-if="showRutinaDetalleModal"
+      :rutina="rutinaDetalle"
+      @close="cerrarRutinaDetalleModal"
+    />
   </Teleport>
 </template>
 
@@ -631,7 +742,10 @@ async function quitarDieta(dieta) {
   border: 1px solid rgba(0, 210, 97, 0.4);
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
 }
 
 .cliente-modal__section-btn:hover {
@@ -639,25 +753,124 @@ async function quitarDieta(dieta) {
   border-color: #00D261;
 }
 
+.cliente-modal__section-btn--assign {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: rgba(0, 210, 97, 0.1);
+  border: 1.5px solid #00D261;
+  box-shadow: 0 2px 8px rgba(0, 210, 97, 0.15);
+}
+
+.cliente-modal__section-btn--assign:hover {
+  background: rgba(0, 210, 97, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 210, 97, 0.3);
+}
+
+.cliente-modal__section-btn--assign svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.cliente-modal__section-btn--upload {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  background: rgba(0, 210, 97, 0.1);
+  border: 1.5px solid #00D261;
+  font-weight: 600;
+}
+
+.cliente-modal__section-btn--upload:hover {
+  background: rgba(0, 210, 97, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 210, 97, 0.2);
+}
+
+.cliente-modal__section-btn--upload svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
 .cliente-modal__rutinas,
 .cliente-modal__dietas {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
-.cliente-modal__rutina-item,
-.cliente-modal__dieta-item {
+.cliente-modal__rutina-dia-group {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid #00D261;
+  box-shadow: 0 2px 8px rgba(0, 210, 97, 0.15);
+}
+
+.cliente-modal__rutina-dia-header {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: rgba(0, 210, 97, 0.1);
+  border: none;
+  border-bottom: 1.5px solid #00D261;
+  color: #00D261;
+  text-transform: capitalize;
+  border-radius: 12px 12px 0 0;
+}
+
+.cliente-modal__rutina-dia-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   padding: 0.75rem;
   background: #1e1e1e;
-  border-radius: 8px;
-  border: 1px solid #252525;
+}
+
+.cliente-modal__rutina-item {
+  padding: 0.75rem;
+  background: #252525;
+  border-radius: 6px;
+  border: 1px solid #2a2a2a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cliente-modal__rutina-item--clickable {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cliente-modal__rutina-item--clickable:hover {
+  background: #2a2a2a;
+  border-color: rgba(0, 210, 97, 0.3);
+  transform: translateX(2px);
 }
 
 .cliente-modal__rutina-info {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.375rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.cliente-modal__rutina-arrow {
+  width: 20px;
+  height: 20px;
+  color: #697586;
+  flex-shrink: 0;
+  transition: color 0.2s, transform 0.2s;
+}
+
+.cliente-modal__rutina-item--clickable:hover .cliente-modal__rutina-arrow {
+  color: #00D261;
+  transform: translateX(2px);
 }
 
 .cliente-modal__rutina-nombre {
@@ -666,9 +879,16 @@ async function quitarDieta(dieta) {
   color: #fff;
 }
 
-.cliente-modal__rutina-dias {
+.cliente-modal__rutina-ejercicios {
   font-size: 0.75rem;
   color: #697586;
+}
+
+.cliente-modal__dieta-item {
+  padding: 0.75rem;
+  background: #1e1e1e;
+  border-radius: 8px;
+  border: 1px solid #252525;
 }
 
 .cliente-modal__dieta-info {

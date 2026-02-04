@@ -155,7 +155,7 @@ const ejerciciosPorBloque = computed(() => {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  z-index: 1000;
+  z-index: 2000;
   animation: rutina-modal-fade 0.2s ease;
 }
 
