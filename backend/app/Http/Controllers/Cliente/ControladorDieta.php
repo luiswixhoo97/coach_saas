@@ -27,28 +27,33 @@ class ControladorDieta extends Controller
             ], 404);
         }
 
-        $dieta = DietaCliente::where('suscripcion_id', $suscripcionActiva->id)
+        $dietas = DietaCliente::where('suscripcion_id', $suscripcionActiva->id)
             ->where('activo', true)
             ->latest()
-            ->first();
+            ->get();
 
-        if (!$dieta) {
+        if ($dietas->isEmpty()) {
             return response()->json([
-                'mensaje' => 'No tienes una dieta asignada.',
+                'mensaje' => 'No tienes dietas asignadas.',
             ], 404);
         }
 
-        return response()->json([
-            'datos' => [
+        $datos = $dietas->map(function ($dieta) {
+            return [
                 'id' => $dieta->id,
                 'archivo' => $dieta->archivo,
+                'nombre' => basename($dieta->archivo),
                 'url' => Storage::disk('public')->url($dieta->archivo),
                 'created_at' => $dieta->created_at->format('Y-m-d'),
-            ],
+            ];
+        })->values();
+
+        return response()->json([
+            'datos' => $datos,
         ]);
     }
 
-    public function descargar(Request $request)
+    public function ver(Request $request, int $id)
     {
         $cliente = $this->getCliente($request);
 
@@ -61,14 +66,42 @@ class ControladorDieta extends Controller
         }
 
         $dieta = DietaCliente::where('suscripcion_id', $suscripcionActiva->id)
+            ->where('id', $id)
             ->where('activo', true)
-            ->latest()
-            ->first();
+            ->firstOrFail();
 
-        if (!$dieta) {
+        $path = Storage::disk('public')->path($dieta->archivo);
+        
+        return response()->file($path, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . basename($dieta->archivo) . '"',
+        ]);
+    }
+
+    public function descargar(Request $request, int $id = null)
+    {
+        $cliente = $this->getCliente($request);
+
+        $suscripcionActiva = $cliente->suscripcionActiva();
+
+        if (!$suscripcionActiva) {
             return response()->json([
-                'mensaje' => 'No tienes una dieta asignada.',
+                'mensaje' => 'No tienes una suscripción activa.',
             ], 404);
+        }
+
+        if ($id) {
+            // Descargar archivo específico por ID
+            $dieta = DietaCliente::where('suscripcion_id', $suscripcionActiva->id)
+                ->where('id', $id)
+                ->where('activo', true)
+                ->firstOrFail();
+        } else {
+            // Descargar el más reciente (compatibilidad hacia atrás)
+            $dieta = DietaCliente::where('suscripcion_id', $suscripcionActiva->id)
+                ->where('activo', true)
+                ->latest()
+                ->firstOrFail();
         }
 
         return Storage::disk('public')->download($dieta->archivo);

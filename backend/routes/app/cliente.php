@@ -39,11 +39,17 @@ Route::prefix('cliente')
     Route::get('/rutinas', [ControladorRutina::class, 'index'])
         ->name('cliente.rutinas.index');
     
+    Route::get('/rutinas/dia-actual', [ControladorRutina::class, 'rutinaDelDia'])
+        ->name('cliente.rutinas.dia-actual');
+    
     Route::get('/rutinas/{id}', [ControladorRutina::class, 'mostrar'])
         ->name('cliente.rutinas.mostrar');
     
     Route::post('/rutinas/{id}/registrar', [ControladorRutina::class, 'registrarEntrenamiento'])
         ->name('cliente.rutinas.registrar');
+    
+    Route::get('/ejercicios/{id}/video', [ControladorRutina::class, 'verVideo'])
+        ->name('cliente.ejercicios.video');
 
     /*
     |--------------------------------------------------------------------------
@@ -53,8 +59,14 @@ Route::prefix('cliente')
     Route::get('/dieta', [ControladorDieta::class, 'mostrar'])
         ->name('cliente.dieta.mostrar');
     
-    Route::get('/dieta/download', [ControladorDieta::class, 'descargar'])
+    Route::get('/dieta/{id}', [ControladorDieta::class, 'ver'])
+        ->name('cliente.dieta.ver');
+    
+    Route::get('/dieta/{id}/download', [ControladorDieta::class, 'descargar'])
         ->name('cliente.dieta.descargar');
+    
+    Route::get('/dieta/download', [ControladorDieta::class, 'descargar'])
+        ->name('cliente.dieta.descargar.legacy');
 
     /*
     |--------------------------------------------------------------------------
