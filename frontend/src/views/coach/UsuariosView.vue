@@ -143,11 +143,15 @@ function cerrarSubirDietaUsuariosModal() {
   showSubirDietaUsuariosModal.value = false
 }
 
-async function onRutinaAsignada() {
+async function onRutinaAsignada(clienteActualizado) {
   await cargarClientes(paginaActual.value)
   if (modalDetalle.value && detalleCliente.value) {
-    const res = await get(`/coach/clientes/${detalleCliente.value.id}`)
-    detalleCliente.value = res.datos ?? res.data ?? res
+    if (clienteActualizado) {
+      detalleCliente.value = clienteActualizado
+    } else {
+      const res = await get(`/coach/clientes/${detalleCliente.value.id}`)
+      detalleCliente.value = res.datos ?? res.data ?? res
+    }
   }
 }
 
@@ -395,6 +399,7 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
           @asignar-rutina="abrirAsignarRutina"
           @subir-dieta="abrirSubirDieta"
           @dieta-eliminada="onDietaEliminada"
+          @rutina-asignada="onRutinaAsignada"
         />
 
         <!-- Modal asignar rutina -->

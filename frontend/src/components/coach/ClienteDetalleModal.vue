@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useApi } from '@/composables/useApi'
 import Swal from 'sweetalert2'
 import RutinaDetalleModal from '@/components/coach/RutinaDetalleModal.vue'
+import AsignarRutinaClienteModal from '@/components/coach/AsignarRutinaClienteModal.vue'
 
 /**
  * ClienteDetalleModal - Detalle del cliente en móvil (bottom sheet).
@@ -15,7 +16,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'asignar-rutina', 'subir-dieta', 'dieta-eliminada'])
+const emit = defineEmits(['close', 'asignar-rutina', 'subir-dieta', 'dieta-eliminada', 'rutina-asignada'])
 
 const { del, get } = useApi()
 
@@ -28,6 +29,9 @@ const cargandoPreview = ref(false)
 const showRutinaDetalleModal = ref(false)
 const rutinaDetalle = ref(null)
 const cargandoRutina = ref(false)
+
+// Estado para el modal de asignar rutina a cliente
+const showAsignarRutinaClienteModal = ref(false)
 
 function nombreCompleto(c) {
   if (!c) return ''
@@ -116,6 +120,28 @@ async function verDetalleRutina(rutina) {
 function cerrarRutinaDetalleModal() {
   showRutinaDetalleModal.value = false
   rutinaDetalle.value = null
+}
+
+function abrirAsignarRutinaCliente() {
+  showAsignarRutinaClienteModal.value = true
+}
+
+function cerrarAsignarRutinaClienteModal() {
+  showAsignarRutinaClienteModal.value = false
+}
+
+async function onRutinaAsignada() {
+  // Recargar datos del cliente
+  if (props.cliente?.id) {
+    try {
+      const res = await get(`/coach/clientes/${props.cliente.id}`)
+      const clienteActualizado = res.datos ?? res.data ?? res
+      // Actualizar el cliente en el componente padre
+      emit('rutina-asignada', clienteActualizado)
+    } catch (e) {
+      console.error('Error al recargar datos del cliente:', e)
+    }
+  }
 }
 
 async function previewDieta(dieta) {
@@ -349,7 +375,7 @@ async function quitarDieta(dieta) {
               <button
                 type="button"
                 class="cliente-modal__section-btn cliente-modal__section-btn--assign"
-                @click="emit('asignar-rutina', cliente)"
+                @click="abrirAsignarRutinaCliente"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -515,6 +541,14 @@ async function quitarDieta(dieta) {
       v-if="showRutinaDetalleModal"
       :rutina="rutinaDetalle"
       @close="cerrarRutinaDetalleModal"
+    />
+
+    <!-- Modal Asignar Rutina a Cliente -->
+    <AsignarRutinaClienteModal
+      v-if="showAsignarRutinaClienteModal && cliente"
+      :cliente="cliente"
+      @close="cerrarAsignarRutinaClienteModal"
+      @asignada="onRutinaAsignada"
     />
   </Teleport>
 </template>
