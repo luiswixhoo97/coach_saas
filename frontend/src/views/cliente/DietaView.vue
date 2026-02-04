@@ -1,23 +1,29 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useApi } from '@/composables/useApi'
+import { useAuthStore } from '@/stores/auth'
 
 const { get, cargando } = useApi()
+const authStore = useAuthStore()
+
+// URL base de la API
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+
 const archivos = ref([])
 const archivoSeleccionado = ref(null)
+const pdfBlobUrl = ref(null)
 const error = ref('')
+const cargandoPdf = ref(false)
 const zoom = ref(100)
+const paginaActual = ref(1)
+const totalPaginas = ref(1)
+const rotacion = ref(0)
 
 // Cargar archivos de dieta
 async function cargarArchivos() {
   try {
     const res = await get('/cliente/dieta')
     archivos.value = Array.isArray(res.datos) ? res.datos : [res.datos].filter(Boolean)
-    
-    // Si hay un solo archivo, seleccionarlo automáticamente
-    if (archivos.value.length === 1) {
-      archivoSeleccionado.value = archivos.value[0]
-    }
   } catch (e) {
     error.value = e.message || 'No se pudo cargar las dietas.'
     archivos.value = []
@@ -25,15 +31,61 @@ async function cargarArchivos() {
 }
 
 // Seleccionar archivo
-function seleccionarArchivo(archivo) {
+async function seleccionarArchivo(archivo) {
   archivoSeleccionado.value = archivo
-  zoom.value = 100 // Resetear zoom al cambiar archivo
+  
+  // Limpiar blob URL anterior si existe
+  if (pdfBlobUrl.value) {
+    URL.revokeObjectURL(pdfBlobUrl.value)
+    pdfBlobUrl.value = null
+  }
+  
+  // Cargar PDF como blob con autenticación
+  await cargarPdfComoBlob(archivo.id)
+}
+
+// Cargar PDF como blob con autenticación
+async function cargarPdfComoBlob(dietaId) {
+  cargandoPdf.value = true
+  error.value = ''
+  
+  try {
+    const url = `${API_BASE_URL}/cliente/dieta/${dietaId}`
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`,
+        'Accept': 'application/pdf'
+      },
+      credentials: 'include'
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: No se pudo cargar el PDF`)
+    }
+    
+    const blob = await response.blob()
+    pdfBlobUrl.value = URL.createObjectURL(blob)
+  } catch (e) {
+    console.error('Error cargando PDF:', e)
+    error.value = e.message || 'No se pudo cargar el PDF.'
+    pdfBlobUrl.value = null
+  } finally {
+    cargandoPdf.value = false
+  }
 }
 
 // Volver a la lista
 function volverALista() {
+  // Limpiar blob URL
+  if (pdfBlobUrl.value) {
+    URL.revokeObjectURL(pdfBlobUrl.value)
+    pdfBlobUrl.value = null
+  }
   archivoSeleccionado.value = null
   zoom.value = 100
+  paginaActual.value = 1
+  rotacion.value = 0
 }
 
 // Ajustar zoom
@@ -41,31 +93,71 @@ function ajustarZoom(delta) {
   zoom.value = Math.max(50, Math.min(200, zoom.value + delta))
 }
 
-// Descargar archivo
-function descargarArchivo(archivo) {
-  const url = `/api/cliente/dieta/${archivo.id}/download`
-  window.open(url, '_blank')
+// Rotar PDF
+function rotarPdf() {
+  rotacion.value = (rotacion.value + 90) % 360
 }
 
-// Imprimir archivo
-function imprimirArchivo(archivo) {
-  const url = `/api/cliente/dieta/${archivo.id}`
-  const iframe = document.createElement('iframe')
-  iframe.style.display = 'none'
-  iframe.src = url
-  document.body.appendChild(iframe)
-  iframe.onload = () => {
-    iframe.contentWindow.print()
-    setTimeout(() => {
-      document.body.removeChild(iframe)
-    }, 1000)
+// Navegar páginas
+function cambiarPagina(delta) {
+  const nuevaPagina = paginaActual.value + delta
+  if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas.value) {
+    paginaActual.value = nuevaPagina
   }
 }
 
-// URL del PDF para el visor
-const pdfUrl = computed(() => {
-  if (!archivoSeleccionado.value) return null
-  return `/api/cliente/dieta/${archivoSeleccionado.value.id}`
+// Actualizar total de páginas cuando el PDF carga
+function onPdfLoad(event) {
+  const iframe = event.target
+  try {
+    const pdfWindow = iframe.contentWindow
+    if (pdfWindow && pdfWindow.PDFViewerApplication) {
+      totalPaginas.value = pdfWindow.PDFViewerApplication.pagesCount || 1
+      paginaActual.value = pdfWindow.PDFViewerApplication.page || 1
+    }
+  } catch (e) {
+    // Si no se puede acceder al PDF viewer interno, usar valores por defecto
+    console.log('No se pudo acceder al PDF viewer interno')
+  }
+}
+
+// Descargar archivo
+async function descargarArchivo(archivo) {
+  try {
+    const url = `${API_BASE_URL}/cliente/dieta/${archivo.id}/download`
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`,
+        'Accept': 'application/pdf'
+      },
+      credentials: 'include'
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: No se pudo descargar el archivo`)
+    }
+    
+    const blob = await response.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = archivo.nombre || 'dieta.pdf'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(blobUrl)
+  } catch (e) {
+    console.error('Error descargando archivo:', e)
+    error.value = e.message || 'No se pudo descargar el archivo.'
+  }
+}
+
+// Limpiar blob URL al desmontar
+onUnmounted(() => {
+  if (pdfBlobUrl.value) {
+    URL.revokeObjectURL(pdfBlobUrl.value)
+  }
 })
 
 // Formatear fecha
@@ -99,204 +191,108 @@ onMounted(() => {
       <p class="dieta__empty-desc">Tu entrenador te asignará una dieta cuando esté lista.</p>
     </div>
 
-    <!-- Caso 1: Un solo archivo - Mostrar directamente -->
-    <template v-else-if="archivos.length === 1 && archivoSeleccionado">
-      <div class="dieta__viewer">
-        <!-- Header con controles -->
-        <div class="dieta__viewer-header">
-          <div class="dieta__viewer-title-wrap">
-            <h1 class="dieta__viewer-title">{{ archivoSeleccionado.nombre || 'Dieta' }}</h1>
-            <span class="dieta__viewer-date">{{ formatearFecha(archivoSeleccionado.created_at) }}</span>
-          </div>
-          <div class="dieta__viewer-controls">
-            <!-- Zoom -->
-            <div class="dieta__zoom-controls">
-              <button
-                type="button"
-                class="dieta__zoom-btn"
-                :disabled="zoom <= 50"
-                @click="ajustarZoom(-10)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="M21 21l-4.35-4.35"/>
-                  <path d="M8 11h6"/>
-                </svg>
-              </button>
-              <span class="dieta__zoom-value">{{ zoom }}%</span>
-              <button
-                type="button"
-                class="dieta__zoom-btn"
-                :disabled="zoom >= 200"
-                @click="ajustarZoom(10)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="M21 21l-4.35-4.35"/>
-                  <path d="M11 8v6M8 11h6"/>
-                </svg>
-              </button>
-            </div>
-            <!-- Acciones -->
-            <button
-              type="button"
-              class="dieta__action-btn"
-              @click="descargarArchivo(archivoSeleccionado)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Descargar
-            </button>
-            <button
-              type="button"
-              class="dieta__action-btn"
-              @click="imprimirArchivo(archivoSeleccionado)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6 9 6 2 18 2 18 9"/>
-                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
-                <rect x="6" y="14" width="12" height="8"/>
-              </svg>
-              Imprimir
-            </button>
-          </div>
-        </div>
-
-        <!-- Visor PDF -->
-        <div class="dieta__viewer-content">
-          <iframe
-            :src="pdfUrl"
-            class="dieta__pdf-iframe"
-            :style="{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }"
-          ></iframe>
-        </div>
-      </div>
-    </template>
-
-    <!-- Caso 2: Múltiples archivos -->
-    <template v-else-if="archivos.length > 1">
+    <!-- Lista de archivos -->
+    <template v-else-if="archivos.length > 0">
       <!-- Lista de archivos -->
-      <div v-if="!archivoSeleccionado" class="dieta__lista">
-        <h1 class="dieta__lista-title">Mis Dietas</h1>
-        <p class="dieta__lista-desc">Selecciona una dieta para verla</p>
-        <div class="dieta__archivos-grid">
-          <div
-            v-for="archivo in archivos"
-            :key="archivo.id"
-            class="dieta__archivo-card"
-            @click="seleccionarArchivo(archivo)"
-          >
-            <div class="dieta__archivo-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-                <polyline points="10 9 9 9 8 9"/>
-              </svg>
-            </div>
-            <div class="dieta__archivo-info">
-              <h3 class="dieta__archivo-nombre">{{ archivo.nombre || 'Dieta' }}</h3>
-              <p class="dieta__archivo-fecha">{{ formatearFecha(archivo.created_at) }}</p>
-            </div>
-            <div class="dieta__archivo-action">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
+      <div class="dieta__lista">
+        <section class="dieta__section">
+          <h1 class="dieta__section-title">Mis Dietas</h1>
+          <p class="dieta__section-desc">Selecciona una dieta para verla</p>
+          
+          <div class="dieta__archivos-grid">
+            <div
+              v-for="archivo in archivos"
+              :key="archivo.id"
+              class="dieta__archivo-card"
+              @click="seleccionarArchivo(archivo)"
+            >
+              <div class="dieta__archivo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </div>
+              <div class="dieta__archivo-info">
+                <h3 class="dieta__archivo-nombre">{{ archivo.nombre || 'Dieta' }}</h3>
+                <p class="dieta__archivo-fecha">{{ formatearFecha(archivo.created_at) }}</p>
+              </div>
+              <div class="dieta__archivo-actions">
+                <button
+                  type="button"
+                  class="dieta__archivo-action-btn"
+                  @click.stop="seleccionarArchivo(archivo)"
+                  title="Vista previa"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="dieta__archivo-action-btn"
+                  @click.stop="descargarArchivo(archivo)"
+                  title="Descargar"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
       </div>
 
-      <!-- Preview del archivo seleccionado -->
-      <div v-else class="dieta__viewer">
-        <!-- Header con controles -->
-        <div class="dieta__viewer-header">
-          <div class="dieta__viewer-title-wrap">
-            <button
-              type="button"
-              class="dieta__back-btn"
-              @click="volverALista"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="15 18 9 12 15 6"/>
-              </svg>
-              Volver
-            </button>
-            <div>
-              <h1 class="dieta__viewer-title">{{ archivoSeleccionado.nombre || 'Dieta' }}</h1>
-              <span class="dieta__viewer-date">{{ formatearFecha(archivoSeleccionado.created_at) }}</span>
-            </div>
-          </div>
-          <div class="dieta__viewer-controls">
-            <!-- Zoom -->
-            <div class="dieta__zoom-controls">
+      <!-- Modal de preview con Teleport -->
+      <Teleport to="body">
+        <div
+          v-if="archivoSeleccionado"
+          class="dieta__modal-overlay"
+          @click.self="volverALista"
+        >
+          <div class="dieta__modal">
+            <!-- Header -->
+            <div class="dieta__modal-header">
+              <h2 class="dieta__modal-title">
+                {{ archivoSeleccionado.nombre || 'Dieta' }}
+              </h2>
               <button
                 type="button"
-                class="dieta__zoom-btn"
-                :disabled="zoom <= 50"
-                @click="ajustarZoom(-10)"
+                class="dieta__modal-close"
+                aria-label="Cerrar"
+                @click="volverALista"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="M21 21l-4.35-4.35"/>
-                  <path d="M8 11h6"/>
-                </svg>
-              </button>
-              <span class="dieta__zoom-value">{{ zoom }}%</span>
-              <button
-                type="button"
-                class="dieta__zoom-btn"
-                :disabled="zoom >= 200"
-                @click="ajustarZoom(10)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="M21 21l-4.35-4.35"/>
-                  <path d="M11 8v6M8 11h6"/>
+                  <path d="M18 6L6 18M6 6l12 12"/>
                 </svg>
               </button>
             </div>
-            <!-- Acciones -->
-            <button
-              type="button"
-              class="dieta__action-btn"
-              @click="descargarArchivo(archivoSeleccionado)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Descargar
-            </button>
-            <button
-              type="button"
-              class="dieta__action-btn"
-              @click="imprimirArchivo(archivoSeleccionado)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6 9 6 2 18 2 18 9"/>
-                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
-                <rect x="6" y="14" width="12" height="8"/>
-              </svg>
-              Imprimir
-            </button>
-          </div>
-        </div>
 
-        <!-- Visor PDF -->
-        <div class="dieta__viewer-content">
-          <iframe
-            :src="pdfUrl"
-            class="dieta__pdf-iframe"
-            :style="{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }"
-          ></iframe>
+            <!-- Body con PDF -->
+            <div class="dieta__modal-body">
+              <div v-if="cargandoPdf" class="dieta__pdf-loading">
+                <p>Cargando PDF...</p>
+              </div>
+              <iframe
+                v-else-if="pdfBlobUrl"
+                :src="pdfBlobUrl"
+                class="dieta__pdf-iframe"
+                frameborder="0"
+                type="application/pdf"
+              ></iframe>
+              <div v-else-if="error" class="dieta__pdf-error">
+                <p>{{ error }}</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </Teleport>
     </template>
 
     <!-- Loading -->
@@ -316,6 +312,34 @@ onMounted(() => {
   padding: 1rem;
   padding-top: max(1rem, env(safe-area-inset-top));
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  position: relative;
+}
+
+/* Modal Overlay */
+.dieta__modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 2000;
+  animation: dieta-modal-fade 0.2s ease;
+}
+
+@keyframes dieta-modal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (min-width: 640px) {
+  .dieta__modal-overlay {
+    align-items: center;
+  }
 }
 
 /* Alert */
@@ -333,17 +357,20 @@ onMounted(() => {
 .dieta__empty {
   text-align: center;
   padding: 4rem 1rem;
+  max-width: 600px;
+  margin: 0 auto;
 }
 .dieta__empty-title {
-  font-size: 1.125rem;
-  font-weight: 500;
+  font-size: 1.25rem;
+  font-weight: 600;
   color: #fff;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.75rem;
 }
 .dieta__empty-desc {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   color: #697586;
   margin: 0;
+  line-height: 1.6;
 }
 
 /* Lista de archivos */
@@ -351,17 +378,30 @@ onMounted(() => {
   max-width: 800px;
   margin: 0 auto;
 }
-.dieta__lista-title {
+
+/* Section */
+.dieta__section {
+  background: #161616;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.dieta__section-title {
   font-size: 1.5rem;
   font-weight: 600;
   color: #fff;
   margin: 0 0 0.5rem;
+  letter-spacing: -0.01em;
 }
-.dieta__lista-desc {
+.dieta__section-desc {
   font-size: 0.875rem;
   color: #697586;
   margin: 0 0 1.5rem;
+  line-height: 1.5;
 }
+
 .dieta__archivos-grid {
   display: grid;
   gap: 0.75rem;
@@ -370,15 +410,21 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: #161616;
-  border-radius: 16px;
-  padding: 1rem;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
 }
 .dieta__archivo-card:hover {
-  background: #1e1e1e;
+  background: #252525;
+  border-color: rgba(0, 210, 97, 0.3);
   transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 210, 97, 0.15);
+}
+.dieta__archivo-card:active {
+  transform: translateY(0);
 }
 .dieta__archivo-icon {
   width: 48px;
@@ -412,102 +458,137 @@ onMounted(() => {
   font-size: 0.75rem;
   color: #697586;
   margin: 0;
+  font-weight: 500;
 }
-.dieta__archivo-action {
-  width: 32px;
-  height: 32px;
-  color: #697586;
+.dieta__archivo-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.dieta__archivo-action-btn {
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #697586;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
 }
-.dieta__archivo-action svg {
-  width: 20px;
-  height: 20px;
+.dieta__archivo-action-btn:hover {
+  background: rgba(0, 210, 97, 0.1);
+  color: #00D261;
+}
+.dieta__archivo-action-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
-/* Viewer */
-.dieta__viewer {
+/* Modal */
+.dieta__modal {
+  background: #161616;
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 100%;
+  height: 90vh;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 2rem);
-  height: calc(100dvh - 2rem);
-  max-height: calc(100vh - 2rem);
-  max-height: calc(100dvh - 2rem);
-  background: #161616;
-  border-radius: 16px;
-  overflow: hidden;
+  animation: dieta-modal-slide 0.3s ease;
 }
-.dieta__viewer-header {
+
+@keyframes dieta-modal-slide {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 640px) {
+  .dieta__modal {
+    border-radius: 20px;
+    max-width: 90vw;
+    height: 90vh;
+  }
+}
+
+.dieta__modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
-  background: #1e1e1e;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 1rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid #252525;
   flex-shrink: 0;
-  gap: 1rem;
-  flex-wrap: wrap;
 }
-.dieta__viewer-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+
+.dieta__modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
   flex: 1;
   min-width: 0;
-}
-.dieta__back-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #697586;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dieta__back-btn:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+
+.dieta__modal-close {
+  background: #2a2a2a;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #697586;
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s;
+}
+
+.dieta__modal-close:hover {
+  background: #333;
   color: #fff;
 }
-.dieta__back-btn svg {
+
+.dieta__modal-close svg {
   width: 18px;
   height: 18px;
 }
-.dieta__viewer-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #fff;
-  margin: 0 0 0.25rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dieta__viewer-date {
-  font-size: 0.75rem;
-  color: #697586;
-}
-.dieta__viewer-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-.dieta__zoom-controls {
+
+/* Toolbar */
+.dieta__toolbar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: #161616;
-  border-radius: 8px;
-  padding: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: #1e1e1e;
+  border-bottom: 1px solid #252525;
+  flex-shrink: 0;
+  overflow-x: auto;
 }
-.dieta__zoom-btn {
+.dieta__toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.dieta__toolbar-separator {
+  width: 1px;
+  height: 24px;
+  background: #252525;
+  margin: 0 0.25rem;
+}
+.dieta__toolbar-btn {
   width: 32px;
   height: 32px;
   display: flex;
@@ -515,67 +596,70 @@ onMounted(() => {
   justify-content: center;
   background: transparent;
   border: none;
+  border-radius: 6px;
   color: #697586;
   cursor: pointer;
-  transition: color 0.2s;
-  border-radius: 6px;
+  transition: all 0.2s;
+  padding: 0;
+  flex-shrink: 0;
 }
-.dieta__zoom-btn:hover:not(:disabled) {
+.dieta__toolbar-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.05);
   color: #fff;
 }
-.dieta__zoom-btn:disabled {
+.dieta__toolbar-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
-.dieta__zoom-btn svg {
-  width: 16px;
-  height: 16px;
-}
-.dieta__zoom-value {
-  font-size: 0.75rem;
-  color: #fff;
-  font-weight: 500;
-  min-width: 40px;
-  text-align: center;
-}
-.dieta__action-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  background: rgba(0, 210, 97, 0.15);
-  border: 1px solid rgba(0, 210, 97, 0.3);
-  border-radius: 8px;
-  color: #00D261;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-.dieta__action-btn:hover {
-  background: rgba(0, 210, 97, 0.25);
-  border-color: #00D261;
-}
-.dieta__action-btn svg {
+.dieta__toolbar-btn svg {
   width: 18px;
   height: 18px;
 }
-.dieta__viewer-content {
+.dieta__toolbar-page-info {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+  color: #fff;
+  white-space: nowrap;
+}
+.dieta__toolbar-page-current {
+  background: #252525;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.dieta__toolbar-page-separator {
+  color: #697586;
+}
+.dieta__toolbar-page-total {
+  color: #697586;
+}
+.dieta__modal-body {
   flex: 1;
-  overflow: auto;
-  padding: 1rem;
-  background: #0a0a0a;
+  overflow: hidden;
   position: relative;
 }
+
 .dieta__pdf-iframe {
   width: 100%;
   height: 100%;
-  min-height: 800px;
   border: none;
   background: #fff;
-  border-radius: 8px;
+  display: block;
+}
+.dieta__pdf-loading,
+.dieta__pdf-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #697586;
+  font-size: 0.875rem;
+}
+.dieta__pdf-error {
+  color: #EF5C5C;
 }
 
 /* Loading / Skeleton */
@@ -599,6 +683,38 @@ onMounted(() => {
 
 /* Responsive */
 @media (max-width: 640px) {
+  .dieta__section {
+    padding: 1rem;
+  }
+  .dieta__section-title {
+    font-size: 1.25rem;
+  }
+  .dieta__archivo-card {
+    padding: 1rem;
+    gap: 0.875rem;
+  }
+  .dieta__archivo-icon {
+    width: 40px;
+    height: 40px;
+  }
+  .dieta__archivo-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .dieta__archivo-nombre {
+    font-size: 0.875rem;
+  }
+  .dieta__archivo-fecha {
+    font-size: 0.6875rem;
+  }
+  .dieta__archivo-action-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .dieta__archivo-action-btn svg {
+    width: 16px;
+    height: 16px;
+  }
   .dieta__viewer-header {
     flex-direction: column;
     align-items: flex-start;
