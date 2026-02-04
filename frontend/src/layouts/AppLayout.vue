@@ -68,5 +68,10 @@ const isDark = () => props.theme === 'dark'
 .app-bottom-nav--dark {
   background: #161616;
   border-top: 1px solid #252525;
+  overflow: visible;
+}
+
+.app-bottom-nav {
+  overflow: visible;
 }
 </style>

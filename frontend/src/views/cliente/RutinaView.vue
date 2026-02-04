@@ -462,6 +462,15 @@ onMounted(async () => {
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
 }
 
+/* Desktop */
+@media (min-width: 768px) {
+  .rutina {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+}
+
 /* Alert */
 .rutina__alert {
   background: rgba(239, 92, 92, 0.12);
@@ -501,6 +510,25 @@ onMounted(async () => {
   flex-direction: column;
   gap: 1rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+@media (min-width: 768px) {
+  .rutina__header {
+    flex-direction: row;
+    gap: 1rem;
+    padding: 1.5rem;
+    align-items: flex-end;
+  }
+  
+  .rutina__selector-wrap {
+    flex: 1;
+    width: 50%;
+  }
+  
+  .rutina__toggle-btn {
+    flex: 1;
+    width: 50%;
+  }
 }
 
 /* Selector */
@@ -615,6 +643,12 @@ onMounted(async () => {
 .rutina__progreso-section {
   padding: 1.25rem;
 }
+
+@media (min-width: 768px) {
+  .rutina__progreso-section {
+    padding: 1.5rem;
+  }
+}
 .rutina__progreso-header {
   display: flex;
   align-items: center;
@@ -667,6 +701,12 @@ onMounted(async () => {
   padding: 0;
   overflow: hidden;
 }
+
+@media (min-width: 768px) {
+  .rutina__bloque {
+    max-width: 100%;
+  }
+}
 .rutina__bloque-header-static {
   width: 100%;
   display: flex;
@@ -699,6 +739,22 @@ onMounted(async () => {
 }
 .rutina__bloque-content {
   padding: 0 1rem;
+}
+
+@media (min-width: 768px) {
+  .rutina__bloque-content {
+    padding: 0 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .rutina__bloque-content {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+  }
 }
 
 /* Botón continuar */
@@ -770,6 +826,15 @@ onMounted(async () => {
 }
 .rutina__ejercicio:last-child {
   margin-bottom: 0;
+}
+
+@media (min-width: 768px) {
+  .rutina__ejercicio {
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
 }
 .rutina__ejercicio-media {
   width: 100%;
@@ -869,7 +934,7 @@ onMounted(async () => {
 }
 
 /* Responsive para móviles */
-@media (max-width: 640px) {
+@media (max-width: 767px) {
   .rutina__ejercicio {
     margin-bottom: 0.5rem;
   }
@@ -911,6 +976,46 @@ onMounted(async () => {
   }
   .rutina__bloque-content {
     padding: 0 0.75rem;
+  }
+}
+
+/* Desktop específico */
+@media (min-width: 768px) {
+  .rutina__ejercicio-media {
+    aspect-ratio: 16 / 9;
+    min-height: auto;
+  }
+  
+  .rutina__ejercicio-info {
+    padding: 1.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .rutina__ejercicio-nombre {
+    font-size: 1.25rem;
+  }
+  
+  .rutina__ejercicio-details {
+    gap: 1.5rem;
+  }
+  
+  .rutina__ejercicio-detail-label {
+    font-size: 0.875rem;
+  }
+  
+  .rutina__ejercicio-detail-value {
+    font-size: 1rem;
+  }
+  
+  .rutina__continuar-wrap {
+    padding: 1.5rem;
+  }
+  
+  .rutina__continuar-btn {
+    max-width: 400px;
+    margin: 0 auto;
   }
 }
 

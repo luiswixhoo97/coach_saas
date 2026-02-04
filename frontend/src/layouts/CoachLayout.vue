@@ -55,7 +55,10 @@ const showTopbar = computed(() => true)
       aria-label="Menú principal"
     >
       <div class="coach-layout__sidebar-inner">
-        <h2 class="coach-layout__sidebar-title">Panel Coach</h2>
+        <div class="coach-layout__sidebar-header">
+          <h2 class="coach-layout__sidebar-title">Panel Coach</h2>
+          <div class="coach-layout__sidebar-title-accent"></div>
+        </div>
         <nav class="coach-layout__sidebar-nav">
           <RouterLink
             :to="{ name: 'CoachDashboard' }"
@@ -63,11 +66,15 @@ const showTopbar = computed(() => true)
             :class="{ 'coach-layout__sidebar-link--active': isActive('CoachDashboard') }"
             @click="closeSidebar"
           >
-            <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
-            Dashboard
+            <div class="coach-layout__sidebar-link-bg"></div>
+            <div class="coach-layout__sidebar-link-indicator"></div>
+            <div class="coach-layout__sidebar-icon-wrapper">
+              <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
+            <span class="coach-layout__sidebar-link-text">Dashboard</span>
           </RouterLink>
           <RouterLink
             :to="{ name: 'CoachUsuarios' }"
@@ -75,12 +82,16 @@ const showTopbar = computed(() => true)
             :class="{ 'coach-layout__sidebar-link--active': isActive('CoachUsuarios') }"
             @click="closeSidebar"
           >
-            <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            Usuarios
+            <div class="coach-layout__sidebar-link-bg"></div>
+            <div class="coach-layout__sidebar-link-indicator"></div>
+            <div class="coach-layout__sidebar-icon-wrapper">
+              <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <span class="coach-layout__sidebar-link-text">Usuarios</span>
           </RouterLink>
           <RouterLink
             :to="{ name: 'CoachEjercicios' }"
@@ -88,11 +99,15 @@ const showTopbar = computed(() => true)
             :class="{ 'coach-layout__sidebar-link--active': isActive('CoachEjercicios') }"
             @click="closeSidebar"
           >
-            <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6.5 6.5h11M6.5 6.5v11M6.5 17.5h11M17.5 6.5v11M4 12h4M16 12h4M12 4v4M12 16v4"/>
-              <path d="M12 8v8M8 12h8"/>
-            </svg>
-            Ejercicios
+            <div class="coach-layout__sidebar-link-bg"></div>
+            <div class="coach-layout__sidebar-link-indicator"></div>
+            <div class="coach-layout__sidebar-icon-wrapper">
+              <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6.5 6.5h11M6.5 6.5v11M6.5 17.5h11M17.5 6.5v11M4 12h4M16 12h4M12 4v4M12 16v4"/>
+                <path d="M12 8v8M8 12h8"/>
+              </svg>
+            </div>
+            <span class="coach-layout__sidebar-link-text">Ejercicios</span>
           </RouterLink>
           <RouterLink
             :to="{ name: 'CoachRutinas' }"
@@ -100,10 +115,14 @@ const showTopbar = computed(() => true)
             :class="{ 'coach-layout__sidebar-link--active': isActive('CoachRutinas') }"
             @click="closeSidebar"
           >
-            <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-            </svg>
-            Rutinas
+            <div class="coach-layout__sidebar-link-bg"></div>
+            <div class="coach-layout__sidebar-link-indicator"></div>
+            <div class="coach-layout__sidebar-icon-wrapper">
+              <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+              </svg>
+            </div>
+            <span class="coach-layout__sidebar-link-text">Rutinas</span>
           </RouterLink>
           <RouterLink
             :to="{ name: 'CoachPerfil' }"
@@ -111,11 +130,15 @@ const showTopbar = computed(() => true)
             :class="{ 'coach-layout__sidebar-link--active': isActive('CoachPerfil') }"
             @click="closeSidebar"
           >
-            <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-            Perfil
+            <div class="coach-layout__sidebar-link-bg"></div>
+            <div class="coach-layout__sidebar-link-indicator"></div>
+            <div class="coach-layout__sidebar-icon-wrapper">
+              <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <span class="coach-layout__sidebar-link-text">Perfil</span>
           </RouterLink>
         </nav>
       </div>
@@ -240,10 +263,13 @@ const showTopbar = computed(() => true)
   max-width: 85vw;
   height: 100vh;
   height: 100dvh;
-  background: #161616;
+  background: linear-gradient(180deg, #161616 0%, #1a1a1a 100%);
   border-right: 1px solid #252525;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
   transform: translateX(-100%);
-  transition: transform 0.25s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .coach-layout__sidebar--open {
@@ -251,51 +277,179 @@ const showTopbar = computed(() => true)
 }
 
 .coach-layout__sidebar-inner {
-  padding: 1.25rem 1rem;
-  padding-top: max(1.25rem, env(safe-area-inset-top));
+  padding: 1.5rem 1rem;
+  padding-top: max(1.5rem, env(safe-area-inset-top));
+}
+
+.coach-layout__sidebar-header {
+  position: relative;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(37, 37, 37, 0.8);
 }
 
 .coach-layout__sidebar-title {
-  font-size: 0.9375rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   color: #fff;
-  margin: 0 0 1rem;
+  margin: 0;
   padding: 0 0.5rem;
+  position: relative;
+  z-index: 1;
+  letter-spacing: -0.01em;
+}
+
+.coach-layout__sidebar-title-accent {
+  position: absolute;
+  bottom: -1px;
+  left: 0.5rem;
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, #00D261 0%, rgba(0, 210, 97, 0.5) 100%);
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 2px 8px rgba(0, 210, 97, 0.4);
 }
 
 .coach-layout__sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.375rem;
 }
 
 .coach-layout__sidebar-link {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
   border-radius: 12px;
   font-size: 0.875rem;
   font-weight: 500;
   color: #a0a0a0;
   text-decoration: none;
-  transition: background 0.2s, color 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
-.coach-layout__sidebar-link:hover {
-  background: #1e1e1e;
-  color: #fff;
+.coach-layout__sidebar-link-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0, 210, 97, 0.1) 0%, rgba(0, 210, 97, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 12px;
 }
 
-.coach-layout__sidebar-link--active {
-  background: rgba(0, 210, 97, 0.15);
-  color: #00D261;
+.coach-layout__sidebar-link-indicator {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) translateX(-100%);
+  width: 4px;
+  height: 0;
+  background: linear-gradient(180deg, #00D261 0%, rgba(0, 210, 97, 0.8) 100%);
+  border-radius: 0 2px 2px 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 12px rgba(0, 210, 97, 0.5);
+}
+
+.coach-layout__sidebar-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
 }
 
 .coach-layout__sidebar-icon {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 0 rgba(0, 210, 97, 0));
+}
+
+.coach-layout__sidebar-link-text {
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover state */
+.coach-layout__sidebar-link:hover {
+  color: #fff;
+  transform: translateX(4px);
+}
+
+.coach-layout__sidebar-link:hover .coach-layout__sidebar-link-bg {
+  opacity: 1;
+}
+
+.coach-layout__sidebar-link:hover .coach-layout__sidebar-icon-wrapper {
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(1.05);
+}
+
+.coach-layout__sidebar-link:hover .coach-layout__sidebar-icon {
+  transform: scale(1.1);
+}
+
+/* Active state */
+.coach-layout__sidebar-link--active {
+  color: #00D261;
+  transform: translateX(4px);
+}
+
+.coach-layout__sidebar-link--active .coach-layout__sidebar-link-bg {
+  opacity: 1;
+  background: linear-gradient(90deg, rgba(0, 210, 97, 0.15) 0%, rgba(0, 210, 97, 0.08) 100%);
+}
+
+.coach-layout__sidebar-link--active .coach-layout__sidebar-link-indicator {
+  transform: translateY(-50%) translateX(0);
+  height: 60%;
+}
+
+.coach-layout__sidebar-link--active .coach-layout__sidebar-icon-wrapper {
+  background: linear-gradient(135deg, rgba(0, 210, 97, 0.2) 0%, rgba(0, 210, 97, 0.1) 100%);
+  box-shadow: 0 4px 12px rgba(0, 210, 97, 0.2);
+}
+
+.coach-layout__sidebar-link--active .coach-layout__sidebar-icon {
+  color: #00D261;
+  filter: drop-shadow(0 0 8px rgba(0, 210, 97, 0.6));
+  animation: iconGlow 2s ease-in-out infinite;
+}
+
+.coach-layout__sidebar-link--active .coach-layout__sidebar-link-text {
+  font-weight: 600;
+  color: #00D261;
+}
+
+.coach-layout__sidebar-link--active:hover {
+  transform: translateX(6px);
+}
+
+.coach-layout__sidebar-link--active:hover .coach-layout__sidebar-icon {
+  filter: drop-shadow(0 0 12px rgba(0, 210, 97, 0.8));
+}
+
+/* Animación de glow para icono activo */
+@keyframes iconGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(0, 210, 97, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(0, 210, 97, 0.9));
+  }
 }
 
 /* Header */
@@ -310,23 +464,51 @@ const showTopbar = computed(() => true)
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
-  background: transparent;
-  border: none;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   color: #fff;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.coach-layout__menu-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 210, 97, 0.1) 0%, rgba(0, 210, 97, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .coach-layout__menu-btn:hover {
-  background: #252525;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.coach-layout__menu-btn:hover::before {
+  opacity: 1;
+}
+
+.coach-layout__menu-btn:active {
+  transform: scale(0.95);
 }
 
 .coach-layout__menu-icon {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.coach-layout__menu-btn:hover .coach-layout__menu-icon {
+  transform: rotate(90deg);
 }
 
 .coach-layout__header-title {
