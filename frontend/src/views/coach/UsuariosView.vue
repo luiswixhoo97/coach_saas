@@ -6,6 +6,7 @@ import BaseTable from '@/components/ui/BaseTable.vue'
 import ClienteDetalleModal from '@/components/coach/ClienteDetalleModal.vue'
 import AsignarRutinaModal from '@/components/coach/AsignarRutinaModal.vue'
 import SubirDietaModal from '@/components/coach/SubirDietaModal.vue'
+import SubirDietaUsuariosModal from '@/components/coach/SubirDietaUsuariosModal.vue'
 
 const { get, cargando } = useApi()
 const clientes = ref([])
@@ -24,6 +25,7 @@ const MOBILE_BREAKPOINT = 768
 const selectedClientes = ref(new Set())
 const showAsignarRutinaModal = ref(false)
 const showSubirDietaModal = ref(false)
+const showSubirDietaUsuariosModal = ref(false)
 const clienteParaAsignar = ref(null)
 
 const paginaActual = computed(() => meta.value.pagina_actual ?? 1)
@@ -121,6 +123,10 @@ function abrirSubirDieta(cliente = null) {
   showSubirDietaModal.value = true
 }
 
+function abrirSubirDietaUsuarios() {
+  showSubirDietaUsuariosModal.value = true
+}
+
 function cerrarAsignarRutinaModal() {
   showAsignarRutinaModal.value = false
   clienteParaAsignar.value = null
@@ -131,6 +137,10 @@ function cerrarSubirDietaModal() {
   showSubirDietaModal.value = false
   clienteParaAsignar.value = null
   selectedClientes.value.clear()
+}
+
+function cerrarSubirDietaUsuariosModal() {
+  showSubirDietaUsuariosModal.value = false
 }
 
 async function onRutinaAsignada() {
@@ -180,10 +190,24 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
       <section class="usuarios__section">
         <!-- Header y filtros (común) -->
         <div class="usuarios__section-header">
-          <h2 class="usuarios__section-title">Usuarios</h2>
-          <span class="usuarios__section-meta" v-if="meta.total != null">
-            {{ meta.total }} {{ meta.total === 1 ? 'cliente' : 'clientes' }}
-          </span>
+          <div class="usuarios__section-header-left">
+            <h2 class="usuarios__section-title">Usuarios</h2>
+            <span class="usuarios__section-meta usuarios__section-meta--mobile" v-if="meta.total != null">
+              {{ meta.total }} {{ meta.total === 1 ? 'cliente' : 'clientes' }}
+            </span>
+          </div>
+          <button
+            type="button"
+            class="usuarios__header-action-btn"
+            @click="abrirSubirDietaUsuarios"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <span>Subir dieta</span>
+          </button>
         </div>
         <div class="usuarios__filtros">
           <input
@@ -246,6 +270,11 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
             />
           </div>
           <div v-else class="usuarios__table-wrap">
+            <div class="usuarios__table-header">
+              <span class="usuarios__table-meta usuarios__table-meta--desktop" v-if="meta.total != null">
+                {{ meta.total }} {{ meta.total === 1 ? 'cliente' : 'clientes' }}
+              </span>
+            </div>
             <table class="usuarios__table">
               <thead class="usuarios__thead">
                 <tr>
@@ -386,6 +415,14 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
           @subida="onDietaSubida"
         />
 
+        <!-- Modal subir dieta a usuarios -->
+        <SubirDietaUsuariosModal
+          v-if="showSubirDietaUsuariosModal"
+          :clientes="clientes"
+          @close="cerrarSubirDietaUsuariosModal"
+          @subida="onDietaSubida"
+        />
+
         <!-- Paginación -->
         <div v-if="totalPaginas > 1" class="usuarios__paginacion">
           <button
@@ -456,6 +493,15 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.75rem;
+  gap: 1rem;
+}
+
+.usuarios__section-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .usuarios__section-title {
@@ -463,11 +509,88 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
   font-weight: 600;
   color: #fff;
   margin: 0;
+  flex-shrink: 0;
 }
 
 .usuarios__section-meta {
   font-size: 0.75rem;
   color: #697586;
+}
+
+.usuarios__section-meta--mobile {
+  display: block;
+}
+
+@media (min-width: 769px) {
+  .usuarios__section-meta--mobile {
+    display: none;
+  }
+}
+
+.usuarios__header-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #00D261;
+  background: rgba(0, 210, 97, 0.1);
+  border: 1.5px solid #00D261;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 210, 97, 0.15);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.usuarios__header-action-btn:hover {
+  background: rgba(0, 210, 97, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 210, 97, 0.3);
+}
+
+.usuarios__header-action-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .usuarios__header-action-btn {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    min-width: 140px;
+    justify-content: center;
+  }
+  
+  .usuarios__header-action-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.usuarios__table-header {
+  padding: 0.75rem 1rem;
+  background: #1e1e1e;
+  border-bottom: 1px solid #252525;
+  border-radius: 12px 12px 0 0;
+}
+
+.usuarios__table-meta {
+  font-size: 0.75rem;
+  color: #697586;
+}
+
+.usuarios__table-meta--desktop {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .usuarios__table-meta--desktop {
+    display: none;
+  }
 }
 
 .usuarios__filtros {
@@ -831,6 +954,7 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
   background: #1e1e1e;
   border-color: #252525;
 }
+
 
 .usuarios__th--checkbox,
 .usuarios__td--checkbox {
