@@ -106,7 +106,7 @@ class ControladorCliente extends Controller
         $cliente = Cliente::with([
             'usuario',
             'suscripciones.plan',
-            'rutinasAsignadas.rutina',
+            'rutinasAsignadas.rutina.ejercicios',
         ])
             ->where('creado_por', $coach->id)
             ->findOrFail($id);

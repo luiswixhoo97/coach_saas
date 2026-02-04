@@ -11,6 +11,15 @@ class RutinaAsignadaResource extends JsonResource
     {
         $rutina = $this->whenLoaded('rutina') ? $this->rutina : null;
         
+        // Contar ejercicios si la rutina está cargada
+        $ejerciciosCount = 0;
+        if ($rutina && $rutina->relationLoaded('ejercicios')) {
+            $ejerciciosCount = $rutina->ejercicios->count();
+        } elseif ($rutina) {
+            // Si no está cargada, hacer un count directo
+            $ejerciciosCount = $rutina->ejercicios()->count();
+        }
+        
         return [
             'id' => $this->id,
             'rutina_id' => $this->rutina_id,
@@ -19,6 +28,7 @@ class RutinaAsignadaResource extends JsonResource
             'nivel' => $rutina ? $rutina->nivel : null,
             'objetivo' => $rutina ? $rutina->objetivo : null,
             'dias' => $this->dia ?? [],
+            'ejercicios_count' => $ejerciciosCount,
             'created_at' => $this->created_at->format('Y-m-d H:i'),
         ];
     }

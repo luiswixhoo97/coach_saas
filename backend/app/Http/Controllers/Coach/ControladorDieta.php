@@ -81,7 +81,22 @@ class ControladorDieta extends Controller
 
         $dietasCreadas = [];
         foreach ($archivos as $archivo) {
-            $path = $archivo->store('dietas', 'public');
+            // Conservar el nombre original del archivo
+            $nombreOriginal = $archivo->getClientOriginalName();
+            // Sanitizar el nombre (remover caracteres problemáticos)
+            $nombreSanitizado = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($nombreOriginal, PATHINFO_FILENAME));
+            $extension = $archivo->getClientOriginalExtension();
+            $nombreFinal = $nombreSanitizado . '.' . $extension;
+            
+            // Si el archivo ya existe, agregar timestamp
+            $contador = 1;
+            $nombreBase = $nombreFinal;
+            while (Storage::disk('public')->exists('dietas/' . $nombreFinal)) {
+                $nombreFinal = $nombreSanitizado . '_' . $contador . '.' . $extension;
+                $contador++;
+            }
+            
+            $path = $archivo->storeAs('dietas', $nombreFinal, 'public');
             $dieta = DietaCliente::create([
                 'suscripcion_id' => $suscripcion->id,
                 'archivo' => $path,
@@ -205,10 +220,25 @@ class ControladorDieta extends Controller
         $dietasCreadas = [];
         
         DB::transaction(function () use ($suscripciones, $archivos, &$dietasCreadas) {
-            // Almacenar cada archivo una vez
+            // Almacenar cada archivo una vez con nombre original
             $archivosAlmacenados = [];
             foreach ($archivos as $archivo) {
-                $path = $archivo->store('dietas', 'public');
+                // Conservar el nombre original del archivo
+                $nombreOriginal = $archivo->getClientOriginalName();
+                // Sanitizar el nombre (remover caracteres problemáticos)
+                $nombreSanitizado = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($nombreOriginal, PATHINFO_FILENAME));
+                $extension = $archivo->getClientOriginalExtension();
+                $nombreFinal = $nombreSanitizado . '.' . $extension;
+                
+                // Si el archivo ya existe, agregar timestamp
+                $contador = 1;
+                $nombreBase = $nombreFinal;
+                while (Storage::disk('public')->exists('dietas/' . $nombreFinal)) {
+                    $nombreFinal = $nombreSanitizado . '_' . $contador . '.' . $extension;
+                    $contador++;
+                }
+                
+                $path = $archivo->storeAs('dietas', $nombreFinal, 'public');
                 $archivosAlmacenados[] = $path;
             }
             
