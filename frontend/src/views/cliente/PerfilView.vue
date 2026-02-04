@@ -236,7 +236,7 @@ onMounted(async () => {
 
       <!-- Actions -->
       <div class="perfil__actions">
-        <RouterLink to="/cliente" class="perfil__btn perfil__btn--outline">
+        <RouterLink to="/cliente/rutina" class="perfil__btn perfil__btn--outline">
           Ver mis rutinas
         </RouterLink>
         <button

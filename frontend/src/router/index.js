@@ -62,6 +62,16 @@ const routes = [
         path: 'perfil',
         name: 'ClientePerfil',
         component: () => import('@/views/cliente/PerfilView.vue')
+      },
+      {
+        path: 'rutina',
+        name: 'ClienteRutina',
+        component: () => import('@/views/cliente/RutinaView.vue')
+      },
+      {
+        path: 'dieta',
+        name: 'ClienteDieta',
+        component: () => import('@/views/cliente/DietaView.vue')
       }
     ]
   },
