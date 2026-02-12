@@ -13,8 +13,9 @@ class MensajeResource extends JsonResource
             'id' => $this->id,
             'emisor_tipo' => $this->emisor_tipo,
             'mensaje' => $this->mensaje,
-            'enviado_en' => $this->enviado_en->format('Y-m-d H:i'),
+            'enviado_en' => $this->enviado_en->format('Y-m-d H:i:s'),
             'leido' => $this->leido,
+            'archivos' => ArchivoMensajeResource::collection($this->whenLoaded('archivos')),
         ];
     }
 }

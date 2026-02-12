@@ -112,6 +112,9 @@ Route::prefix('cliente')
     
     Route::put('/chat/leer', [ControladorChat::class, 'marcarLeido'])
         ->name('cliente.chat.marcar-leido');
+    
+    Route::get('/chat/archivos/{archivoId}', [ControladorChat::class, 'descargarArchivo'])
+        ->name('cliente.chat.descargar-archivo');
 
     /*
     |--------------------------------------------------------------------------

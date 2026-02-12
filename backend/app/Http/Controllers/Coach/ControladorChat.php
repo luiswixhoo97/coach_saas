@@ -3,11 +3,19 @@
 namespace App\Http\Controllers\Coach;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Chat\SolicitudEnviarMensaje;
+use App\Http\Resources\ArchivoMensajeResource;
+use App\Http\Resources\ChatResource;
+use App\Http\Resources\ClienteResource;
+use App\Http\Resources\MensajeResource;
+use App\Http\Resources\PaginacionCollection;
+use App\Models\ArchivoMensaje;
 use App\Models\Chat;
 use App\Models\Cliente;
 use App\Models\Mensaje;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ControladorChat extends Controller
 {
@@ -16,32 +24,46 @@ class ControladorChat extends Controller
         return $request->user()->coach;
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): PaginacionCollection
     {
         $coach = $this->getCoach($request);
 
-        $chats = Chat::with(['cliente.usuario'])
-            ->where('coach_id', $coach->id)
-            ->orderBy('updated_at', 'desc')
-            ->paginate(15);
+        // Obtener todos los clientes del coach
+        $clientes = Cliente::with('usuario')
+            ->where('creado_por', $coach->id)
+            ->get();
 
-        return response()->json([
-            'datos' => $chats->map(fn($c) => [
-                'id' => $c->id,
-                'cliente' => [
-                    'id' => $c->cliente->id,
-                    'email' => $c->cliente->usuario->email,
-                ],
-                'ultimo_mensaje' => $c->ultimoMensaje()?->mensaje,
-                'mensajes_no_leidos' => $c->mensajesNoLeidos('coach'),
-                'actualizado_el' => $c->updated_at->format('Y-m-d H:i'),
-            ]),
-            'meta' => [
-                'total' => $chats->total(),
-                'por_pagina' => $chats->perPage(),
-                'pagina_actual' => $chats->currentPage(),
-            ],
-        ]);
+        // Crear/obtener chat para cada cliente usando firstOrCreate
+        // Esto evita duplicados y siempre obtiene el mismo chat
+        $chats = $clientes->map(function ($cliente) use ($coach) {
+            $chat = Chat::firstOrCreate(
+                ['coach_id' => $coach->id, 'cliente_id' => $cliente->id],
+                ['creado_en' => now()]
+            );
+            $chat->load(['cliente.usuario']);
+            return $chat;
+        });
+
+        // Ordenar por updated_at descendente
+        $chats = $chats->sortByDesc('updated_at')->values();
+
+        // Paginar manualmente
+        $page = $request->input('page', 1);
+        $perPage = 15;
+        $offset = ($page - 1) * $perPage;
+        $items = $chats->slice($offset, $perPage)->values();
+        $total = $chats->count();
+
+        // Crear paginador manual
+        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return new PaginacionCollection($paginator, ChatResource::class);
     }
 
     public function almacenar(Request $request): JsonResponse
@@ -55,35 +77,25 @@ class ControladorChat extends Controller
         // Verificar que el cliente pertenece al coach
         $cliente = Cliente::where('creado_por', $coach->id)->findOrFail($request->cliente_id);
 
-        // Verificar si ya existe un chat
-        $chat = Chat::where('coach_id', $coach->id)
-            ->where('cliente_id', $cliente->id)
-            ->first();
+        // Usar firstOrCreate para evitar duplicados
+        $chat = Chat::firstOrCreate(
+            ['coach_id' => $coach->id, 'cliente_id' => $cliente->id],
+            ['creado_en' => now()]
+        );
 
-        if ($chat) {
-            return response()->json([
-                'mensaje' => 'Ya existe un chat con este cliente.',
-                'datos' => ['id' => $chat->id],
-            ]);
-        }
-
-        $chat = Chat::create([
-            'coach_id' => $coach->id,
-            'cliente_id' => $cliente->id,
-            'creado_en' => now(),
-        ]);
+        $wasRecentlyCreated = $chat->wasRecentlyCreated;
 
         return response()->json([
-            'mensaje' => 'Chat creado correctamente.',
+            'mensaje' => $wasRecentlyCreated ? 'Chat creado correctamente.' : 'Ya existe un chat con este cliente.',
             'datos' => ['id' => $chat->id],
-        ], 201);
+        ], $wasRecentlyCreated ? 201 : 200);
     }
 
     public function mostrar(Request $request, int $id): JsonResponse
     {
         $coach = $this->getCoach($request);
 
-        $chat = Chat::with(['cliente.usuario', 'mensajes' => fn($q) => $q->latest()->limit(50)])
+        $chat = Chat::with(['cliente.usuario', 'mensajes.archivos'])
             ->where('coach_id', $coach->id)
             ->findOrFail($id);
 
@@ -91,55 +103,26 @@ class ControladorChat extends Controller
         $chat->marcarComoLeido('coach');
 
         return response()->json([
-            'datos' => [
-                'id' => $chat->id,
-                'cliente' => [
-                    'id' => $chat->cliente->id,
-                    'email' => $chat->cliente->usuario->email,
-                ],
-                'mensajes' => $chat->mensajes->map(fn($m) => [
-                    'id' => $m->id,
-                    'emisor_tipo' => $m->emisor_tipo,
-                    'mensaje' => $m->mensaje,
-                    'enviado_en' => $m->enviado_en->format('Y-m-d H:i'),
-                    'leido' => $m->leido,
-                ]),
-            ],
+            'datos' => new ChatResource($chat),
         ]);
     }
 
-    public function mensajes(Request $request, int $id): JsonResponse
+    public function mensajes(Request $request, int $id): PaginacionCollection
     {
         $coach = $this->getCoach($request);
 
         $chat = Chat::where('coach_id', $coach->id)->findOrFail($id);
 
         $mensajes = $chat->mensajes()
+            ->with('archivos')
             ->orderBy('enviado_en', 'desc')
             ->paginate(50);
 
-        return response()->json([
-            'datos' => $mensajes->map(fn($m) => [
-                'id' => $m->id,
-                'emisor_tipo' => $m->emisor_tipo,
-                'mensaje' => $m->mensaje,
-                'enviado_en' => $m->enviado_en->format('Y-m-d H:i'),
-                'leido' => $m->leido,
-            ]),
-            'meta' => [
-                'total' => $mensajes->total(),
-                'por_pagina' => $mensajes->perPage(),
-                'pagina_actual' => $mensajes->currentPage(),
-            ],
-        ]);
+        return new PaginacionCollection($mensajes, MensajeResource::class);
     }
 
-    public function enviarMensaje(Request $request, int $id): JsonResponse
+    public function enviarMensaje(SolicitudEnviarMensaje $request, int $id): JsonResponse
     {
-        $request->validate([
-            'mensaje' => 'required|string|max:5000',
-        ]);
-
         $coach = $this->getCoach($request);
 
         $chat = Chat::where('coach_id', $coach->id)->findOrFail($id);
@@ -147,21 +130,83 @@ class ControladorChat extends Controller
         $mensaje = Mensaje::create([
             'chat_id' => $chat->id,
             'emisor_tipo' => 'coach',
-            'mensaje' => $request->mensaje,
+            'mensaje' => $request->input('mensaje', ''),
             'enviado_en' => now(),
             'leido' => false,
         ]);
 
+        // Procesar archivos si existen
+        if ($request->hasFile('archivos')) {
+            $this->procesarArchivos($mensaje, $request->file('archivos'), $chat->id);
+        }
+
         $chat->touch(); // Actualizar updated_at del chat
+
+        // Cargar archivos para la respuesta
+        $mensaje->load('archivos');
 
         return response()->json([
             'mensaje' => 'Mensaje enviado.',
-            'datos' => [
-                'id' => $mensaje->id,
-                'mensaje' => $mensaje->mensaje,
-                'enviado_en' => $mensaje->enviado_en->format('Y-m-d H:i'),
-            ],
+            'datos' => new MensajeResource($mensaje),
         ], 201);
+    }
+
+    /**
+     * Procesar y guardar archivos adjuntos
+     */
+    private function procesarArchivos(Mensaje $mensaje, array $archivos, int $chatId): void
+    {
+        foreach ($archivos as $archivo) {
+            $nombreOriginal = $archivo->getClientOriginalName();
+            $extension = strtolower($archivo->getClientOriginalExtension());
+            $mimeType = $archivo->getMimeType();
+
+            // Determinar tipo
+            $tiposImagen = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $tipo = in_array($extension, $tiposImagen) ? 'imagen' : 'documento';
+
+            // Sanitizar nombre
+            $nombreSanitizado = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($nombreOriginal, PATHINFO_FILENAME));
+            $nombreFinal = $nombreSanitizado . '_' . time() . '_' . uniqid() . '.' . $extension;
+
+            // Guardar archivo
+            $ruta = $archivo->storeAs("chat/{$chatId}", $nombreFinal, 'public');
+
+            // Crear registro en BD
+            ArchivoMensaje::create([
+                'mensaje_id' => $mensaje->id,
+                'tipo' => $tipo,
+                'nombre_original' => $nombreOriginal,
+                'ruta' => $ruta,
+                'tamaño' => $archivo->getSize(),
+                'mime_type' => $mimeType,
+            ]);
+        }
+    }
+
+    /**
+     * Descargar archivo adjunto
+     */
+    public function descargarArchivo(Request $request, int $id, int $archivoId): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $coach = $this->getCoach($request);
+
+        $chat = Chat::where('coach_id', $coach->id)->findOrFail($id);
+
+        // Verificar que el archivo pertenece a un mensaje de este chat
+        $archivo = ArchivoMensaje::whereHas('mensaje', function ($query) use ($chat) {
+            $query->where('chat_id', $chat->id);
+        })->findOrFail($archivoId);
+
+        // Verificar que el archivo existe
+        if (!Storage::disk('public')->exists($archivo->ruta)) {
+            abort(404, 'Archivo no encontrado.');
+        }
+
+        return Storage::disk('public')->download(
+            $archivo->ruta,
+            $archivo->nombre_original
+        );
     }
 
     public function marcarLeido(Request $request, int $id): JsonResponse

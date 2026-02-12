@@ -313,6 +313,9 @@ Route::prefix('coach')
     
     Route::put('/chats/{id}/leer', [ControladorChat::class, 'marcarLeido'])
         ->name('coach.chats.marcar-leido');
+    
+    Route::get('/chats/{id}/archivos/{archivoId}', [ControladorChat::class, 'descargarArchivo'])
+        ->name('coach.chats.descargar-archivo');
 
     /*
     |--------------------------------------------------------------------------

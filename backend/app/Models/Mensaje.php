@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Mensaje extends ModeloBase
 {
@@ -34,6 +35,11 @@ class Mensaje extends ModeloBase
     public function chat(): BelongsTo
     {
         return $this->belongsTo(Chat::class);
+    }
+
+    public function archivos(): HasMany
+    {
+        return $this->hasMany(ArchivoMensaje::class);
     }
 
     /*
