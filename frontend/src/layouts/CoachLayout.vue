@@ -125,6 +125,21 @@ const showTopbar = computed(() => true)
             <span class="coach-layout__sidebar-link-text">Rutinas</span>
           </RouterLink>
           <RouterLink
+            :to="{ name: 'CoachChat' }"
+            class="coach-layout__sidebar-link"
+            :class="{ 'coach-layout__sidebar-link--active': isActive('CoachChat') || isActive('CoachChatDetalle') }"
+            @click="closeSidebar"
+          >
+            <div class="coach-layout__sidebar-link-bg"></div>
+            <div class="coach-layout__sidebar-link-indicator"></div>
+            <div class="coach-layout__sidebar-icon-wrapper">
+              <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <span class="coach-layout__sidebar-link-text">Chat</span>
+          </RouterLink>
+          <RouterLink
             :to="{ name: 'CoachPerfil' }"
             class="coach-layout__sidebar-link"
             :class="{ 'coach-layout__sidebar-link--active': isActive('CoachPerfil') }"
@@ -211,6 +226,16 @@ const showTopbar = computed(() => true)
               <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
             </svg>
             <span class="coach-layout__nav-label">Rutinas</span>
+          </RouterLink>
+          <RouterLink
+            :to="{ name: 'CoachChat' }"
+            class="coach-layout__nav-item"
+            :class="{ 'coach-layout__nav-item--active': isActive('CoachChat') || isActive('CoachChatDetalle') }"
+          >
+            <svg class="coach-layout__nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span class="coach-layout__nav-label">Chat</span>
           </RouterLink>
           <RouterLink
             :to="{ name: 'CoachPerfil' }"

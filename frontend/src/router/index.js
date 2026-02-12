@@ -44,6 +44,16 @@ const routes = [
         path: 'perfil',
         name: 'CoachPerfil',
         component: () => import('@/views/coach/PerfilView.vue')
+      },
+      {
+        path: 'chat',
+        name: 'CoachChat',
+        component: () => import('@/views/coach/ChatView.vue')
+      },
+      {
+        path: 'chat/:id',
+        name: 'CoachChatDetalle',
+        component: () => import('@/views/coach/ChatView.vue')
       }
     ]
   },
@@ -72,6 +82,11 @@ const routes = [
         path: 'dieta',
         name: 'ClienteDieta',
         component: () => import('@/views/cliente/DietaView.vue')
+      },
+      {
+        path: 'chat',
+        name: 'ClienteChat',
+        component: () => import('@/views/cliente/ChatView.vue')
       }
     ]
   },

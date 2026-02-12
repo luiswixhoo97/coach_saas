@@ -106,6 +106,21 @@ const showTopbar = computed(() => true)
             <span class="cliente-layout__sidebar-link-text">Dieta</span>
           </RouterLink>
           <RouterLink
+            :to="{ name: 'ClienteChat' }"
+            class="cliente-layout__sidebar-link"
+            :class="{ 'cliente-layout__sidebar-link--active': isActive('ClienteChat') }"
+            @click="closeSidebar"
+          >
+            <div class="cliente-layout__sidebar-link-bg"></div>
+            <div class="cliente-layout__sidebar-link-indicator"></div>
+            <div class="cliente-layout__sidebar-icon-wrapper">
+              <svg class="cliente-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <span class="cliente-layout__sidebar-link-text">Chat</span>
+          </RouterLink>
+          <RouterLink
             :to="{ name: 'ClientePerfil' }"
             class="cliente-layout__sidebar-link"
             :class="{ 'cliente-layout__sidebar-link--active': isActive('ClientePerfil') }"
@@ -199,6 +214,22 @@ const showTopbar = computed(() => true)
               </svg>
             </div>
             <span class="bottom-nav__label">Dieta</span>
+            <div class="bottom-nav__indicator"></div>
+          </RouterLink>
+          <RouterLink
+            :to="{ name: 'ClienteChat' }"
+            :class="[
+              'bottom-nav__item',
+              isActive('ClienteChat') ? 'bottom-nav__item--active' : ''
+            ]"
+          >
+            <div class="bottom-nav__icon-wrapper">
+              <div class="bottom-nav__icon-bg"></div>
+              <svg class="bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </div>
+            <span class="bottom-nav__label">Chat</span>
             <div class="bottom-nav__indicator"></div>
           </RouterLink>
           <RouterLink
