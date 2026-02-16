@@ -31,8 +31,21 @@ onUnmounted(() => {
   window.removeEventListener('resize', checkDesktop)
 })
 
-const showBottomNav = computed(() => !isDesktop.value)
-const showTopbar = computed(() => true)
+// Ocultar bottomnav y topbar en móvil cuando estamos dentro de un chat (WhatsApp-like)
+const enChatMovil = computed(() => {
+  return !isDesktop.value && route.name === 'CoachChatDetalle'
+})
+
+const showBottomNav = computed(() => {
+  if (isDesktop.value) return false
+  if (enChatMovil.value) return false
+  return true
+})
+
+const showTopbar = computed(() => {
+  if (enChatMovil.value) return false
+  return true
+})
 </script>
 
 <template>

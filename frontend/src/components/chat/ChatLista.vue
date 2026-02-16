@@ -237,7 +237,7 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background: #161616;
+  background: #111111;
   overflow: hidden;
 }
 
@@ -337,7 +337,7 @@ onMounted(() => {
   min-height: 0;
   /* Scrollbar personalizado */
   scrollbar-width: thin;
-  scrollbar-color: #252525 #161616;
+  scrollbar-color: #252525 #111111;
 }
 
 .chat-lista__contenido::-webkit-scrollbar {
@@ -345,7 +345,7 @@ onMounted(() => {
 }
 
 .chat-lista__contenido::-webkit-scrollbar-track {
-  background: #161616;
+  background: #111111;
 }
 
 .chat-lista__contenido::-webkit-scrollbar-thumb {
@@ -389,12 +389,16 @@ onMounted(() => {
 }
 
 .chat-lista__item:hover {
-  background: #1e1e1e;
+  background: #1a1a1a;
 }
 
 .chat-lista__item--seleccionado {
-  background: #1e1e1e;
+  background: #1a1a1a;
   border-left: 3px solid #00D261;
+}
+
+.chat-lista__item--seleccionado:hover {
+  background: #1e1e1e;
 }
 
 .chat-lista__avatar {

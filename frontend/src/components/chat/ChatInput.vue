@@ -270,26 +270,18 @@ const estaDeshabilitado = computed(() => props.disabled || props.cargando)
   /* Fijo en la parte inferior, sin scroll - como WhatsApp Desktop */
   flex-shrink: 0;
   width: 100%;
-  background: #161616;
-  border-top: 1px solid #252525;
-  padding: 0.75rem;
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  background: #111111;
+  border-top: 1px solid #1e1e1e;
+  padding: 0.625rem 1rem;
+  padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
   z-index: 100;
-  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.3);
   /* Asegurar que no tenga scroll */
   overflow: visible;
   /* El input está al final del contenedor flex, por lo que queda fijo naturalmente */
 }
 
-/* En móvil, usar fixed para estar encima del bottom-nav */
-@media (max-width: 768px) {
-  .chat-input {
-    position: fixed;
-    bottom: 5rem; /* Altura del bottom-nav (--height-bottomnav) */
-    left: 0;
-    right: 0;
-  }
-}
+/* En móvil el ChatInput queda al final del flex container
+   ya que el bottom-nav se oculta cuando estamos dentro de un chat */
 
 .chat-input__archivos {
   display: flex;
@@ -388,6 +380,12 @@ const estaDeshabilitado = computed(() => props.disabled || props.cargando)
 .chat-input__textarea-wrapper {
   flex: 1;
   position: relative;
+  border-radius: 12px;
+  outline: none !important;
+}
+
+.chat-input__textarea-wrapper:focus-within {
+  outline: none !important;
 }
 
 .chat-input__textarea {
@@ -404,12 +402,20 @@ const estaDeshabilitado = computed(() => props.disabled || props.cargando)
   resize: none;
   overflow-y: auto;
   transition: all 0.2s ease;
+  outline: none !important;
+  box-shadow: none;
 }
 
 .chat-input__textarea:focus {
-  outline: none;
+  outline: none !important;
   border-color: #00D261;
   background: #252525;
+  box-shadow: none;
+}
+
+.chat-input__textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none;
 }
 
 .chat-input__textarea:disabled {

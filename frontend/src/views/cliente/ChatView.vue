@@ -1,7 +1,8 @@
 <script setup>
 /**
  * ChatView - Vista de chat para cliente
- * Muestra el chat con su coach
+ * Muestra el chat con su coach (un solo chat, sin lista)
+ * Funciona correctamente en móvil y desktop con alturas explícitas
  */
 
 import { ref, computed, onMounted } from 'vue'
@@ -73,7 +74,7 @@ function handleDescargarArchivo(archivo) {
 
 <template>
   <div class="chat-view">
-    <!-- Header del chat -->
+    <!-- Header del chat (info del coach) -->
     <div v-if="chat" class="chat-view__header">
       <BaseAvatar
         :nombre="nombreCoach"
@@ -101,8 +102,15 @@ function handleDescargarArchivo(archivo) {
 
     <!-- Estado vacío: sin chat -->
     <div v-if="!chat && !cargandoChat" class="chat-view__vacio">
-      <p class="chat-view__vacio-texto">No tienes un chat activo</p>
-      <p class="chat-view__vacio-hint">Tu coach creará un chat cuando sea necesario</p>
+      <div class="chat-view__vacio-contenido">
+        <div class="chat-view__vacio-icono">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+        <p class="chat-view__vacio-texto">No tienes un chat activo</p>
+        <p class="chat-view__vacio-hint">Tu coach creará un chat cuando sea necesario</p>
+      </div>
     </div>
 
     <!-- Input de mensaje -->
@@ -118,23 +126,50 @@ function handleDescargarArchivo(archivo) {
 </template>
 
 <style scoped>
+/* ========================================
+   CHAT VIEW CLIENTE
+   Alturas explícitas para móvil y desktop
+   ======================================== */
+
 .chat-view {
-  height: 100%;
   display: flex;
   flex-direction: column;
   background: #0a0a0a;
   overflow: hidden;
   position: relative;
+  /* Móvil: descontar topbar + bottomnav (ambos visibles) */
+  height: calc(100vh - var(--height-topbar) - var(--height-bottomnav));
+  height: calc(100dvh - var(--height-topbar) - var(--height-bottomnav));
 }
 
+/* Desktop: solo descontar topbar (no hay bottomnav) */
+@media (min-width: 768px) {
+  .chat-view {
+    height: calc(100vh - var(--height-topbar));
+    height: calc(100dvh - var(--height-topbar));
+    max-height: calc(100vh - var(--height-topbar));
+  }
+}
+
+/* ========================================
+   HEADER (info del coach)
+   ======================================== */
 .chat-view__header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem;
-  background: #161616;
-  border-bottom: 1px solid #252525;
+  padding: 0.625rem 1rem;
+  background: #111111;
+  border-bottom: 1px solid #1e1e1e;
   flex-shrink: 0;
+  min-height: 56px;
+}
+
+@media (min-width: 768px) {
+  .chat-view__header {
+    padding: 0.5rem 1.25rem;
+    min-height: 60px;
+  }
 }
 
 .chat-view__header-info {
@@ -161,6 +196,9 @@ function handleDescargarArchivo(archivo) {
   white-space: nowrap;
 }
 
+/* ========================================
+   LOADING
+   ======================================== */
 .chat-view__loading {
   flex: 1;
   display: flex;
@@ -181,26 +219,49 @@ function handleDescargarArchivo(archivo) {
   to { transform: rotate(360deg); }
 }
 
+/* ========================================
+   ESTADO VACÍO
+   ======================================== */
 .chat-view__vacio {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 2rem;
   text-align: center;
 }
 
+.chat-view__vacio-contenido {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 320px;
+}
+
+.chat-view__vacio-icono {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #111111;
+  border: 2px solid #1e1e1e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3a3a3a;
+  margin-bottom: 1.25rem;
+}
+
 .chat-view__vacio-texto {
   font-size: 1rem;
   font-weight: 600;
-  color: #fff;
+  color: #e0e0e0;
   margin-bottom: 0.5rem;
 }
 
 .chat-view__vacio-hint {
   font-size: 0.875rem;
   color: #697586;
+  line-height: 1.5;
 }
 </style>
-
