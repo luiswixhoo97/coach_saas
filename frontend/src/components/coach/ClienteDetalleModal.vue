@@ -40,8 +40,6 @@ const procesandoActivo = ref(false)
 
 // Estado para formularios
 const showFormularioClienteModal = ref(false)
-const formularioParaCliente = ref(null)
-const formulariosDisponibles = ref([])
 
 function nombreCompleto(c) {
   if (!c) return ''
@@ -396,64 +394,13 @@ function abrirParametros() {
   router.push({ name: 'CoachParametrosCliente', params: { id: props.cliente.id } })
 }
 
-async function abrirFormulario() {
+function abrirFormulario() {
   if (!props.cliente) return
-  
-  try {
-    // Cargar formularios disponibles
-    const response = await get('/coach/formularios')
-    formulariosDisponibles.value = response.datos || []
-    
-    if (formulariosDisponibles.value.length === 0) {
-      await Swal.fire({
-        title: 'Sin formularios',
-        text: 'No hay formularios disponibles. Crea un formulario primero.',
-        icon: 'info',
-        confirmButtonColor: '#00D261'
-      })
-      return
-    }
-    
-    // Si solo hay uno, abrirlo directamente
-    if (formulariosDisponibles.value.length === 1) {
-      formularioParaCliente.value = formulariosDisponibles.value[0]
-      showFormularioClienteModal.value = true
-      return
-    }
-    
-    // Si hay varios, mostrar selector con SweetAlert
-    const { value: seleccion } = await Swal.fire({
-      title: 'Seleccionar formulario',
-      input: 'select',
-      inputOptions: formulariosDisponibles.value.reduce((acc, f, i) => {
-        acc[i] = f.nombre
-        return acc
-      }, {}),
-      inputPlaceholder: 'Selecciona un formulario',
-      showCancelButton: true,
-      confirmButtonText: 'Abrir',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#00D261',
-      cancelButtonColor: '#666'
-    })
-    
-    if (seleccion !== undefined) {
-      formularioParaCliente.value = formulariosDisponibles.value[seleccion]
-      showFormularioClienteModal.value = true
-    }
-  } catch (err) {
-    await Swal.fire({
-      title: 'Error',
-      text: err.response?.data?.mensaje || 'Error al cargar formularios',
-      icon: 'error',
-      confirmButtonColor: '#00D261'
-    })
-  }
+  showFormularioClienteModal.value = true
 }
 
 function cerrarFormularioClienteModal() {
   showFormularioClienteModal.value = false
-  formularioParaCliente.value = null
 }
 
 async function onFormularioCompletado() {
@@ -781,13 +728,12 @@ async function onFormularioCompletado() {
     />
 
     <!-- Modal Formulario Cliente -->
-    <FormularioClienteModal
-      v-if="showFormularioClienteModal && cliente && formularioParaCliente"
-      :cliente="cliente"
-      :formulario="formularioParaCliente"
-      @close="cerrarFormularioClienteModal"
-      @completado="onFormularioCompletado"
-    />
+        <FormularioClienteModal
+          v-if="showFormularioClienteModal && cliente"
+          :cliente="cliente"
+          @close="cerrarFormularioClienteModal"
+          @completado="onFormularioCompletado"
+        />
   </Teleport>
 </template>
 

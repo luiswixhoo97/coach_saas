@@ -34,8 +34,6 @@ const showSubirDietaUsuariosModal = ref(false)
 const clienteParaAsignar = ref(null)
 const clientesProcesando = ref(new Set())
 const showFormularioClienteModal = ref(false)
-const formularioParaCliente = ref(null)
-const formulariosDisponibles = ref([])
 const showParametrosClienteModal = ref(false)
 
 const paginaActual = computed(() => meta.value.pagina_actual ?? 1)
@@ -248,45 +246,13 @@ function onParametrosGuardado() {
   cargarClientes(paginaActual.value)
 }
 
-async function abrirFormulario(c) {
-  try {
-    // Cargar formularios disponibles
-    const response = await get('/coach/formularios')
-    formulariosDisponibles.value = response.datos || []
-    
-    if (formulariosDisponibles.value.length === 0) {
-      alert('No hay formularios disponibles. Crea un formulario primero.')
-      return
-    }
-    
-    // Si solo hay uno, abrirlo directamente
-    if (formulariosDisponibles.value.length === 1) {
-      formularioParaCliente.value = formulariosDisponibles.value[0]
-      clienteParaAsignar.value = c
-      showFormularioClienteModal.value = true
-      return
-    }
-    
-    // Si hay varios, mostrar selector
-    const opciones = formulariosDisponibles.value.map((f, i) => `${i + 1}. ${f.nombre}`).join('\n')
-    const seleccion = prompt(`Selecciona un formulario (1-${formulariosDisponibles.value.length}):\n${opciones}`)
-    
-    if (seleccion) {
-      const indice = parseInt(seleccion) - 1
-      if (indice >= 0 && indice < formulariosDisponibles.value.length) {
-        formularioParaCliente.value = formulariosDisponibles.value[indice]
-        clienteParaAsignar.value = c
-        showFormularioClienteModal.value = true
-      }
-    }
-  } catch (err) {
-    error.value = err.response?.data?.mensaje || 'Error al cargar formularios'
-  }
+function abrirFormulario(c) {
+  clienteParaAsignar.value = c
+  showFormularioClienteModal.value = true
 }
 
 function cerrarFormularioClienteModal() {
   showFormularioClienteModal.value = false
-  formularioParaCliente.value = null
   clienteParaAsignar.value = null
 }
 
@@ -625,9 +591,8 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
 
         <!-- Modal formulario cliente -->
         <FormularioClienteModal
-          v-if="showFormularioClienteModal && clienteParaAsignar && formularioParaCliente"
+          v-if="showFormularioClienteModal && clienteParaAsignar"
           :cliente="clienteParaAsignar"
-          :formulario="formularioParaCliente"
           @close="cerrarFormularioClienteModal"
           @completado="onFormularioCompletado"
         />

@@ -12,6 +12,8 @@ const { logout } = useAuth()
 const perfil = ref(null)
 const error = ref('')
 const cerrandoSesion = ref(false)
+const tieneFormularioPendiente = ref(false)
+const formularioPendiente = ref(null)
 
 // Estadísticas
 const estadisticasRaw = ref([])
@@ -73,11 +75,26 @@ function inicialesAvatar(datos) {
   return nombre.slice(0, 2).toUpperCase()
 }
 
+
 onMounted(async () => {
   try {
     // Cargar perfil primero
     const resPerfil = await get('/cliente/perfil')
     perfil.value = resPerfil.datos
+    
+    // Verificar si hay formulario pendiente
+    try {
+      const resFormulario = await get('/cliente/formulario-pendiente')
+      // El endpoint devuelve datos: null si no hay formulario, o un objeto con id, nombre, preguntas si hay
+      if (resFormulario.datos && resFormulario.datos !== null && typeof resFormulario.datos === 'object' && resFormulario.datos.id) {
+        tieneFormularioPendiente.value = true
+        formularioPendiente.value = resFormulario.datos
+      } else {
+        tieneFormularioPendiente.value = false
+      }
+    } catch (e) {
+      tieneFormularioPendiente.value = false
+    }
     
     // Solo cargar estadísticas si el cliente está activo
     if (perfil.value?.activo) {
@@ -121,6 +138,27 @@ onMounted(async () => {
           {{ perfil.activo ? 'Activo' : 'Inactivo' }}
         </span>
       </div>
+
+      <!-- Alerta de formulario pendiente -->
+      <section v-if="tieneFormularioPendiente" class="perfil__section">
+        <div class="perfil__formulario-pendiente">
+          <div class="perfil__formulario-pendiente-header">
+            <svg class="perfil__formulario-pendiente-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <h3 class="perfil__formulario-pendiente-title">Llenar el formulario</h3>
+          </div>
+          <p class="perfil__formulario-pendiente-text">
+            Completa tu información para una mejor asesoría
+          </p>
+          <RouterLink 
+            to="/cliente/formulario-pendiente" 
+            class="perfil__formulario-pendiente-btn"
+          >
+            Completar formulario
+          </RouterLink>
+        </div>
+      </section>
 
       <!-- Details grid -->
       <section class="perfil__section">
@@ -634,5 +672,62 @@ onMounted(async () => {
 @keyframes pulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
+}
+
+/* Formulario pendiente */
+.perfil__formulario-pendiente {
+  background: rgba(255, 153, 0, 0.1) !important;
+  border: 1px solid #FF9900 !important;
+  border-radius: 12px;
+  padding: 1rem;
+  width: 100%;
+}
+
+.perfil__formulario-pendiente-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.perfil__formulario-pendiente-icon {
+  width: 24px;
+  height: 24px;
+  color: #FF9900 !important;
+  flex-shrink: 0;
+}
+
+.perfil__formulario-pendiente-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff !important;
+  margin: 0;
+}
+
+.perfil__formulario-pendiente-text {
+  font-size: 0.875rem;
+  color: #a0a0a0 !important;
+  margin: 0 0 1rem 0;
+  padding-left: calc(24px + 0.75rem);
+}
+
+.perfil__formulario-pendiente-btn {
+  display: inline-block;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #0a0a0a !important;
+  background: #FF9900 !important;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.2s;
+  margin-left: calc(24px + 0.75rem);
+  border: none;
+  cursor: pointer;
+}
+
+.perfil__formulario-pendiente-btn:hover {
+  background: #e68900 !important;
+  transform: translateY(-1px);
 }
 </style>

@@ -15,6 +15,9 @@ const linkCopiado = ref(false)
 const generando = ref(false)
 const linkActivo = ref(false)
 const linkInput = ref(null)
+const formulariosDisponibles = ref([])
+const cargandoFormularios = ref(false)
+const actualizandoFormularioEstandar = ref(false)
 
 // Tabs: Estadísticas | Otros
 const tabSeleccionado = ref('estadisticas')
@@ -63,10 +66,40 @@ onMounted(async () => {
     perfil.value = resPerfil.datos
     dashboard.value = resDashboard?.datos ?? null
     linkActivo.value = perfil.value?.link_registro_activo ?? false
+    
+    // Cargar formularios disponibles
+    await cargarFormularios()
   } catch (e) {
     error.value = e.message || 'No se pudo cargar el perfil.'
   }
 })
+
+async function cargarFormularios() {
+  try {
+    cargandoFormularios.value = true
+    const response = await get('/coach/formularios')
+    formulariosDisponibles.value = response.datos || []
+  } catch (e) {
+    console.error('Error al cargar formularios:', e)
+  } finally {
+    cargandoFormularios.value = false
+  }
+}
+
+async function actualizarFormularioEstandar(formularioId) {
+  try {
+    actualizandoFormularioEstandar.value = true
+    const response = await put('/coach/perfil', {
+      formulario_inicial_id: formularioId
+    })
+    perfil.value.formulario_inicial_id = response.datos.formulario_inicial_id
+    perfil.value.formulario_estandar = response.datos.formulario_estandar
+  } catch (e) {
+    error.value = e.response?.data?.mensaje || 'Error al actualizar formulario estándar'
+  } finally {
+    actualizandoFormularioEstandar.value = false
+  }
+}
 
 async function generarLink() {
   try {
@@ -195,6 +228,61 @@ function copiarLink() {
               />
               <span>Link activo</span>
             </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Formulario Estándar -->
+      <section class="perfil__section">
+        <div class="perfil__section-header">
+          <h2 class="perfil__section-title">Formulario Estándar</h2>
+        </div>
+        <div class="perfil__formulario-estandar">
+          <p class="perfil__formulario-estandar-desc">
+            Selecciona el formulario que usarás para todos tus clientes (ej: "¿Cuántas veces comes?", "¿Tienes alergias?", etc.)
+          </p>
+          
+          <div v-if="cargandoFormularios" class="perfil__formulario-estandar-loading">
+            <p class="perfil__formulario-estandar-loading-text">Cargando formularios...</p>
+          </div>
+          
+          <div v-else-if="formulariosDisponibles.length === 0" class="perfil__formulario-estandar-empty">
+            <p class="perfil__formulario-estandar-empty-text">
+              No tienes formularios creados. 
+              <RouterLink to="/coach/formularios" class="perfil__formulario-estandar-link">
+                Crea uno primero
+              </RouterLink>
+            </p>
+          </div>
+          
+          <div v-else class="perfil__formulario-estandar-select">
+            <select
+              :value="perfil.formulario_inicial_id || ''"
+              @change="actualizarFormularioEstandar($event.target.value ? parseInt($event.target.value) : null)"
+              :disabled="actualizandoFormularioEstandar"
+              class="perfil__formulario-estandar-select-input"
+            >
+              <option value="">Selecciona un formulario</option>
+              <option
+                v-for="formulario in formulariosDisponibles"
+                :key="formulario.id"
+                :value="formulario.id"
+              >
+                {{ formulario.nombre }}
+              </option>
+            </select>
+            
+            <div v-if="perfil.formulario_estandar" class="perfil__formulario-estandar-info">
+              <p class="perfil__formulario-estandar-info-text">
+                <strong>Formulario actual:</strong> {{ perfil.formulario_estandar.nombre }}
+              </p>
+            </div>
+            
+            <div v-else class="perfil__formulario-estandar-warning">
+              <p class="perfil__formulario-estandar-warning-text">
+                ⚠️ No tienes un formulario estándar configurado. Tus clientes no podrán completar formularios hasta que configures uno.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -737,5 +825,106 @@ function copiarLink() {
 @keyframes perfil-pulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
+}
+
+/* Formulario Estándar */
+.perfil__formulario-estandar {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.perfil__formulario-estandar-desc {
+  font-size: 0.8125rem;
+  color: #697586;
+  margin: 0 0 1rem;
+}
+
+.perfil__formulario-estandar-loading,
+.perfil__formulario-estandar-empty {
+  background: #161616;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.perfil__formulario-estandar-loading-text,
+.perfil__formulario-estandar-empty-text {
+  font-size: 0.8125rem;
+  color: #697586;
+  margin: 0;
+}
+
+.perfil__formulario-estandar-link {
+  color: #00D261;
+  text-decoration: none;
+}
+
+.perfil__formulario-estandar-link:hover {
+  text-decoration: underline;
+}
+
+.perfil__formulario-estandar-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.perfil__formulario-estandar-select-input {
+  width: 100%;
+  background: #161616;
+  border: 1px solid #252525;
+  border-radius: 8px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.perfil__formulario-estandar-select-input:focus {
+  outline: none;
+  border-color: #00D261;
+  box-shadow: 0 0 0 2px rgba(0, 210, 97, 0.35);
+}
+
+.perfil__formulario-estandar-select-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.perfil__formulario-estandar-select-input option {
+  background: #161616;
+  color: #fff;
+}
+
+.perfil__formulario-estandar-info {
+  background: rgba(0, 210, 97, 0.1);
+  border: 1px solid rgba(0, 210, 97, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.perfil__formulario-estandar-info-text {
+  font-size: 0.8125rem;
+  color: #a0a0a0;
+  margin: 0;
+}
+
+.perfil__formulario-estandar-info-text strong {
+  color: #00D261;
+}
+
+.perfil__formulario-estandar-warning {
+  background: rgba(255, 153, 0, 0.1);
+  border: 1px solid rgba(255, 153, 0, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.perfil__formulario-estandar-warning-text {
+  font-size: 0.8125rem;
+  color: #FF9900;
+  margin: 0;
 }
 </style>

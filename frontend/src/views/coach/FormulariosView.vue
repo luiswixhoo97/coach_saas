@@ -24,6 +24,7 @@ const totalPaginas = computed(() => meta.value.ultima_pagina ?? 1)
 const hayMas = computed(() => paginaActual.value < totalPaginas.value)
 const isMobile = ref(false)
 const MOBILE_BREAKPOINT = 768
+const tieneFormulario = computed(() => formularios.value.length > 0)
 
 async function cargarFormularios(pagina = 1) {
   try {
@@ -122,7 +123,13 @@ watch(buscar, () => cargarFormularios(1))
               {{ meta.total }} {{ meta.total === 1 ? 'formulario' : 'formularios' }}
             </span>
           </div>
-          <button type="button" class="formularios__btn-add" @click="abrirAgregar" aria-label="Agregar formulario">
+          <button 
+            type="button" 
+            class="formularios__btn-add" 
+            @click="abrirAgregar" 
+            :disabled="tieneFormulario"
+            aria-label="Agregar formulario"
+          >
             Crear formulario
           </button>
         </div>
@@ -359,9 +366,14 @@ watch(buscar, () => cargarFormularios(1))
   transition: background 0.2s, border-color 0.2s;
 }
 
-.formularios__btn-add:hover {
+.formularios__btn-add:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-success-500) 25%, transparent);
   border-color: var(--color-success-500);
+}
+
+.formularios__btn-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .formularios__filtros {

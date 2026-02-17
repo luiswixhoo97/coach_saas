@@ -41,8 +41,8 @@ onUnmounted(() => {
 async function verificarEstadoCliente() {
   if (!authStore.esCliente) return
   
-  // Permitir acceso a perfil y formulario pendiente siempre
-  if (route.name === 'ClientePerfil' || route.name === 'ClienteFormularioPendiente') {
+  // Permitir acceso a perfil siempre
+  if (route.name === 'ClientePerfil') {
     return
   }
   
@@ -59,17 +59,9 @@ async function verificarEstadoCliente() {
       return
     }
     
-    // Si está activo pero tiene formulario pendiente, redirigir
-    if (cliente.activo) {
-      try {
-        const formularioResponse = await api.get('/cliente/formulario-pendiente')
-        if (formularioResponse.datos && route.name !== 'ClienteFormularioPendiente') {
-          router.push({ name: 'ClienteFormularioPendiente' })
-        }
-      } catch (err) {
-        // No hay formulario pendiente, continuar
-      }
-    }
+    // No redirigir automáticamente al formulario pendiente
+    // El cliente puede cerrar el modal y seguir usando la app
+    // El contenedor de advertencia en el perfil le recordará que debe completarlo
   } catch (err) {
     // Si hay error 403 (cuenta inactiva), redirigir a perfil
     if (err.response?.status === 403) {
@@ -80,9 +72,11 @@ async function verificarEstadoCliente() {
   }
 }
 
-// Verificar cuando cambia la ruta
+// Verificar cuando cambia la ruta (solo para clientes inactivos)
 watch(() => route.name, () => {
-  verificarEstadoCliente()
+  if (authStore.esCliente) {
+    verificarEstadoCliente()
+  }
 })
 
 const showBottomNav = computed(() => !isDesktop.value)

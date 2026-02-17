@@ -2,14 +2,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
 import FormularioDinamico from '@/components/FormularioDinamico.vue'
-import BaseButton from '@/components/ui/BaseButton.vue'
 
 const props = defineProps({
   cliente: {
-    type: Object,
-    required: true
-  },
-  formulario: {
     type: Object,
     required: true
   }
@@ -19,23 +14,43 @@ const emit = defineEmits(['close', 'completado'])
 
 const { get, post, cargando } = useApi()
 
+const formularioCompleto = ref(null)
 const respuestas = ref({})
 const enviando = ref(false)
 const error = ref('')
-
-// Cargar formulario si no viene completo
-const formularioCompleto = ref(props.formulario)
+const cargandoFormulario = ref(false)
 
 onMounted(async () => {
-  if (!formularioCompleto.value.preguntas) {
-    try {
-      const response = await get(`/coach/formularios/${formularioCompleto.value.id}`)
-      formularioCompleto.value = response.datos
-    } catch (err) {
-      error.value = err.response?.data?.mensaje || 'Error al cargar formulario'
-    }
-  }
+  await cargarFormularioEstandar()
 })
+
+async function cargarFormularioEstandar() {
+  try {
+    cargandoFormulario.value = true
+    error.value = ''
+    
+    // Obtener el formulario estándar (el endpoint solo devuelve el estándar)
+    const response = await get('/coach/formularios')
+    const formularios = response.datos || []
+    
+    if (formularios.length === 0) {
+      error.value = 'No tienes un formulario estándar configurado. Crea uno en la sección de Formularios.'
+      return
+    }
+    
+    // El endpoint solo devuelve el formulario estándar (el primero)
+    const formularioEstandar = formularios[0]
+    
+    // Cargar el formulario completo con preguntas
+    const formularioResponse = await get(`/coach/formularios/${formularioEstandar.id}`)
+    formularioCompleto.value = formularioResponse.datos
+    respuestas.value = {}
+  } catch (err) {
+    error.value = err.response?.data?.mensaje || 'Error al cargar formulario estándar'
+  } finally {
+    cargandoFormulario.value = false
+  }
+}
 
 async function enviarFormulario() {
   if (enviando.value) return
@@ -50,10 +65,11 @@ async function enviarFormulario() {
       .map(Number)
       .sort((a, b) => a - b)
     indices.forEach(index => {
-      respuestasArray.push(respuestas.value[index])
+      // Permitir valores null (preguntas no contestadas)
+      respuestasArray.push(respuestas.value[index] === '' ? null : respuestas.value[index])
     })
 
-    await post(`/coach/clientes/${props.cliente.id}/formularios/${formularioCompleto.value.id}/responder`, {
+    await post(`/coach/clientes/${props.cliente.id}/formulario-estandar/responder`, {
       respuestas: respuestasArray
     })
 
@@ -81,7 +97,7 @@ function cerrar() {
         <!-- Header -->
         <div class="formulario-cliente-modal__header">
           <h2 class="formulario-cliente-modal__title">
-            {{ formularioCompleto.nombre || 'Formulario' }}
+            {{ formularioCompleto?.nombre || 'Formulario Estándar' }}
           </h2>
           <button
             type="button"
@@ -97,7 +113,7 @@ function cerrar() {
 
         <!-- Body -->
         <div class="formulario-cliente-modal__body">
-          <div v-if="cargando" class="formulario-cliente-modal__loading">
+          <div v-if="cargandoFormulario" class="formulario-cliente-modal__loading">
             <div class="formulario-cliente-modal__skeleton" />
             <div class="formulario-cliente-modal__skeleton" />
           </div>
@@ -106,7 +122,7 @@ function cerrar() {
             {{ error }}
           </div>
 
-          <form v-else @submit.prevent="enviarFormulario" class="formulario-cliente-modal__form">
+          <form v-else-if="formularioCompleto?.preguntas" @submit.prevent="enviarFormulario" class="formulario-cliente-modal__form">
             <div class="formulario-cliente-modal__info">
               <p class="formulario-cliente-modal__info-text">
                 Llenando formulario para: <strong>{{ cliente.nombre }} {{ cliente.apellido_paterno }}</strong>
@@ -114,7 +130,6 @@ function cerrar() {
             </div>
 
             <FormularioDinamico
-              v-if="formularioCompleto.preguntas"
               :preguntas="formularioCompleto.preguntas"
               v-model="respuestas"
             />
@@ -126,24 +141,24 @@ function cerrar() {
         </div>
 
         <!-- Footer -->
-        <div v-if="!cargando && !error && formularioCompleto.preguntas" class="formulario-cliente-modal__footer">
-          <BaseButton
+        <div v-if="!cargandoFormulario && !error && formularioCompleto?.preguntas" class="formulario-cliente-modal__footer">
+          <button
             type="button"
-            variant="secondary"
+            class="formulario-cliente-modal__btn formulario-cliente-modal__btn--danger"
             @click="cerrar"
             :disabled="enviando"
           >
             Cancelar
-          </BaseButton>
-          <BaseButton
+          </button>
+          <button
             type="submit"
-            variant="primary"
+            class="formulario-cliente-modal__btn formulario-cliente-modal__btn--primary"
             @click="enviarFormulario"
-            :loading="enviando"
             :disabled="enviando"
           >
-            {{ enviando ? 'Guardando...' : 'Guardar' }}
-          </BaseButton>
+            <span v-if="enviando" class="formulario-cliente-modal__btn-spinner"></span>
+            <span v-else>Guardar</span>
+          </button>
         </div>
       </div>
     </div>
@@ -230,10 +245,34 @@ function cerrar() {
   color: #fff;
 }
 
+.formulario-cliente-modal__close svg {
+  width: 18px;
+  height: 18px;
+}
+
 .formulario-cliente-modal__body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1.25rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.formulario-cliente-modal__body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.formulario-cliente-modal__body::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.formulario-cliente-modal__body::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+.formulario-cliente-modal__body::-webkit-scrollbar-thumb:hover {
+  background: #444;
 }
 
 .formulario-cliente-modal__loading {
@@ -255,9 +294,13 @@ function cerrar() {
 }
 
 .formulario-cliente-modal__error {
-  color: #EF5C5C;
   font-size: 0.875rem;
-  padding: 1rem;
+  color: #EF5C5C;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(239, 92, 92, 0.12);
+  border: 1px solid rgba(239, 92, 92, 0.3);
+  border-radius: 12px;
   text-align: center;
 }
 
@@ -272,6 +315,7 @@ function cerrar() {
   background: #2a2a2a;
   border-radius: 8px;
   border: 1px solid #333;
+  margin-bottom: 1.5rem;
 }
 
 .formulario-cliente-modal__info-text {
@@ -286,12 +330,12 @@ function cerrar() {
 }
 
 .formulario-cliente-modal__error-message {
-  padding: 0.75rem 1rem;
-  background: rgba(239, 92, 92, 0.1);
-  border: 1px solid rgba(239, 92, 92, 0.3);
-  border-radius: 8px;
-  color: #EF5C5C;
   font-size: 0.875rem;
+  color: #EF5C5C;
+  padding: 0.75rem;
+  background: rgba(239, 92, 92, 0.12);
+  border: 1px solid rgba(239, 92, 92, 0.3);
+  border-radius: 12px;
 }
 
 .formulario-cliente-modal__footer {
@@ -302,8 +346,127 @@ function cerrar() {
   flex-shrink: 0;
 }
 
-.formulario-cliente-modal__footer :deep(.base-button) {
+.formulario-cliente-modal__btn {
   flex: 1;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.formulario-cliente-modal__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.formulario-cliente-modal__btn--secondary {
+  background: #252525;
+  color: #a0a0a0;
+}
+
+.formulario-cliente-modal__btn--secondary:hover:not(:disabled) {
+  background: #2a2a2a;
+  color: #fff;
+}
+
+.formulario-cliente-modal__btn--primary {
+  background: #00D261;
+  color: #0a0a0a;
+}
+
+.formulario-cliente-modal__btn--primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.formulario-cliente-modal__btn--danger {
+  background: #EF5C5C;
+  color: #fff;
+}
+
+.formulario-cliente-modal__btn--danger:hover:not(:disabled) {
+  background: #dc4c4c;
+  opacity: 0.9;
+}
+
+.formulario-cliente-modal__btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(10, 10, 10, 0.3);
+  border-top-color: #0a0a0a;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.formulario-cliente-modal__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  margin-top: 0.5rem;
+}
+
+.formulario-cliente-modal__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  background: #1e1e1e;
+  border: 1px solid #00D261;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.formulario-cliente-modal__item:hover {
+  background: #252525;
+  border-color: #00D261;
+  transform: translateX(4px);
+}
+
+.formulario-cliente-modal__item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.formulario-cliente-modal__item-nombre {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 0.25rem 0;
+}
+
+.formulario-cliente-modal__item-info {
+  font-size: 0.8125rem;
+  color: #9CA3AF;
+  margin: 0;
+}
+
+.formulario-cliente-modal__item-icon {
+  width: 20px;
+  height: 20px;
+  color: #00D261;
+  flex-shrink: 0;
+}
+
+.formulario-cliente-modal__empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #9CA3AF;
+  font-size: 0.875rem;
 }
 </style>
 

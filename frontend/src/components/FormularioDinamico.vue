@@ -42,9 +42,10 @@ watch(() => props.preguntas, () => {
   inicializarRespuestas()
 }, { immediate: true })
 
-// Actualizar respuestas
+// Actualizar respuestas (permite null para valores no contestados)
 function actualizarRespuesta(index, valor) {
-  respuestas.value[index] = valor
+  // Convertir strings vacíos a null
+  respuestas.value[index] = valor === '' ? null : valor
   emit('update:modelValue', { ...respuestas.value })
 }
 
@@ -66,7 +67,7 @@ function actualizarRespuestaMultiple(index, opcion, checked) {
 </script>
 
 <template>
-  <div class="formulario-dinamico space-y-6">
+  <div class="formulario-dinamico">
     <div
       v-for="(pregunta, index) in preguntas"
       :key="index"
@@ -138,41 +139,56 @@ function actualizarRespuestaMultiple(index, opcion, checked) {
 </template>
 
 <style scoped>
+.formulario-dinamico {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 .formulario-dinamico__pregunta {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
 }
 
 .formulario-dinamico__label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
-  color: #374151;
+  color: #a0a0a0;
+  margin-bottom: 0.5rem;
 }
 
 .formulario-dinamico__input,
 .formulario-dinamico__select {
   display: block;
   width: 100%;
-  border-radius: 0.5rem;
-  border: 1px solid #d1d5db;
-  background-color: #ffffff;
-  padding: 0.75rem 1rem;
-  color: #111827;
+  border-radius: 12px;
+  border: 1px solid #252525;
+  background-color: #1e1e1e;
+  padding: 0.625rem 0.875rem;
+  color: #fff;
   font-size: 0.875rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .formulario-dinamico__input::placeholder {
-  color: #9ca3af;
+  color: #697586;
 }
 
 .formulario-dinamico__input:focus,
 .formulario-dinamico__select:focus {
   outline: none;
-  ring: 2px;
-  ring-color: #00D261;
   border-color: #00D261;
+  box-shadow: 0 0 0 2px rgba(0, 210, 97, 0.35);
+}
+
+.formulario-dinamico__select {
+  accent-color: #00D261;
+}
+
+.formulario-dinamico__select option {
+  background: #1e1e1e;
+  color: #fff;
 }
 
 .formulario-dinamico__opciones {
@@ -186,27 +202,29 @@ function actualizarRespuestaMultiple(index, opcion, checked) {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  border: 1px solid #252525;
+  background: #1e1e1e;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  color: #fff;
 }
 
 .formulario-dinamico__opcion-label:hover {
-  background-color: #f9fafb;
+  background: #252525;
+  border-color: #00D261;
 }
 
 .formulario-dinamico__checkbox {
-  width: 1rem;
-  height: 1rem;
-  color: #00D261;
-  border-color: #d1d5db;
-  border-radius: 0.25rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: #00D261;
+  cursor: pointer;
 }
 
 .formulario-dinamico__checkbox:focus {
-  ring: 2px;
-  ring-color: #00D261;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 210, 97, 0.35);
 }
 </style>
 

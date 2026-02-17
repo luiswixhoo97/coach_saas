@@ -335,19 +335,19 @@ const showTopbar = computed(() => {
                     <path d="M12 8v8M8 12h8"/>
                   </svg>
                   <span>Ejercicios</span>
-                </RouterLink>
-                <RouterLink
-                  :to="{ name: 'CoachPerfil' }"
+          </RouterLink>
+          <RouterLink
+            :to="{ name: 'CoachPerfil' }"
                   class="coach-layout__submenu-item"
                   :class="{ 'coach-layout__submenu-item--active': isActive('CoachPerfil') }"
                   @click="closeConfigSubmenu"
-                >
+          >
                   <svg class="coach-layout__submenu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
-                  </svg>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
                   <span>Perfil</span>
-                </RouterLink>
+          </RouterLink>
               </div>
             </Transition>
           </div>
