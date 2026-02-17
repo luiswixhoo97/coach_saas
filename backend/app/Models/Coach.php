@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -21,6 +22,10 @@ class Coach extends ModeloBase
         'bio',
         'avatar',
         'activo',
+        'formulario_registro_id',
+        'formulario_inicial_id',
+        'token_registro',
+        'link_registro_activo',
     ];
 
     protected function casts(): array
@@ -28,6 +33,7 @@ class Coach extends ModeloBase
         return [
             'fecha_nacimiento' => 'date',
             'activo' => 'boolean',
+            'link_registro_activo' => 'boolean',
         ];
     }
 
@@ -96,5 +102,68 @@ class Coach extends ModeloBase
     public function scopeActivos($query)
     {
         return $query->where('activo', true);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relaciones - Formularios
+    |--------------------------------------------------------------------------
+    */
+
+    public function formularioRegistro(): BelongsTo
+    {
+        return $this->belongsTo(Formulario::class, 'formulario_registro_id');
+    }
+
+    public function formularioInicial(): BelongsTo
+    {
+        return $this->belongsTo(Formulario::class, 'formulario_inicial_id');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers - Formularios y Registro
+    |--------------------------------------------------------------------------
+    */
+
+    public function tieneFormularioRegistro(): bool
+    {
+        return $this->formulario_registro_id !== null;
+    }
+
+    public function tieneFormularioInicial(): bool
+    {
+        return $this->formulario_inicial_id !== null;
+    }
+
+    public function generarTokenRegistro(): string
+    {
+        do {
+            $token = \Illuminate\Support\Str::random(32);
+        } while (self::where('token_registro', $token)->exists());
+        
+        $this->update(['token_registro' => $token]);
+        
+        return $token;
+    }
+
+    public function obtenerLinkRegistro(): ?string
+    {
+        if (!$this->token_registro) {
+            return null;
+        }
+        
+        // Obtener URL del frontend desde configuración o variable de entorno
+        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
+        
+        // Asegurar que no termine con /
+        $frontendUrl = rtrim($frontendUrl, '/');
+        
+        return "{$frontendUrl}/registro/{$this->token_registro}";
+    }
+
+    public function linkRegistroActivo(): bool
+    {
+        return $this->link_registro_activo && $this->token_registro !== null;
     }
 }

@@ -9,6 +9,7 @@ use App\Http\Controllers\Coach\ControladorEjercicio;
 use App\Http\Controllers\Coach\ControladorRutina;
 use App\Http\Controllers\Coach\ControladorDieta;
 use App\Http\Controllers\Coach\ControladorParametro;
+use App\Http\Controllers\Coach\ControladorParametroCliente;
 use App\Http\Controllers\Coach\ControladorEvaluacion;
 use App\Http\Controllers\Coach\ControladorFormulario;
 use App\Http\Controllers\Coach\ControladorChat;
@@ -42,6 +43,12 @@ Route::prefix('coach')
     
     Route::get('/dashboard', [ControladorPerfil::class, 'dashboard'])
         ->name('coach.dashboard');
+    
+    Route::post('/perfil/generar-link-registro', [ControladorPerfil::class, 'generarLinkRegistro'])
+        ->name('coach.perfil.generar-link-registro');
+    
+    Route::put('/perfil/toggle-link-registro', [ControladorPerfil::class, 'toggleLinkRegistro'])
+        ->name('coach.perfil.toggle-link-registro');
 
     /*
     |--------------------------------------------------------------------------
@@ -68,6 +75,12 @@ Route::prefix('coach')
     
     Route::get('/clientes/{id}/progreso', [ControladorCliente::class, 'progreso'])
         ->name('coach.clientes.progreso');
+    
+    Route::put('/clientes/{id}/activar', [ControladorCliente::class, 'activar'])
+        ->name('coach.clientes.activar');
+    
+    Route::put('/clientes/{id}/desactivar', [ControladorCliente::class, 'desactivar'])
+        ->name('coach.clientes.desactivar');
 
     /*
     |--------------------------------------------------------------------------
@@ -290,6 +303,26 @@ Route::prefix('coach')
     
     Route::get('/formularios/{id}/respuestas', [ControladorFormulario::class, 'respuestas'])
         ->name('coach.formularios.respuestas');
+    
+    Route::post('/clientes/{cliente}/formularios/{formulario}/responder', [ControladorFormulario::class, 'responderPorCliente'])
+        ->name('coach.clientes.formularios.responder');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Parámetros del Cliente
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/clientes/{cliente}/parametros', [ControladorParametroCliente::class, 'index'])
+        ->name('coach.clientes.parametros.index');
+    
+    Route::post('/clientes/{cliente}/parametros', [ControladorParametroCliente::class, 'almacenar'])
+        ->name('coach.clientes.parametros.almacenar');
+    
+    Route::put('/parametros-cliente/{id}', [ControladorParametroCliente::class, 'actualizar'])
+        ->name('coach.parametros-cliente.actualizar');
+    
+    Route::delete('/parametros-cliente/{id}', [ControladorParametroCliente::class, 'eliminar'])
+        ->name('coach.parametros-cliente.eliminar');
 
     /*
     |--------------------------------------------------------------------------

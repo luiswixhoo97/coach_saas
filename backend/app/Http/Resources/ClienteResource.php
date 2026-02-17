@@ -26,8 +26,22 @@ class ClienteResource extends JsonResource
             'tiene_dieta' => $this->tieneDietaActiva(),
             'coach' => new CoachResource($this->whenLoaded('coach')),
             'suscripcion_activa' => $this->when(
-                method_exists($this->resource, 'suscripcionActiva') && $this->suscripcionActiva(),
-                fn() => new SuscripcionResource($this->suscripcionActiva())
+                $this->suscripciones()->exists(),
+                function () {
+                    // Obtener la última suscripción (activa o pendiente)
+                    $suscripcion = $this->suscripciones()
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+                    
+                    if ($suscripcion) {
+                        // Cargar plan si no está cargado
+                        if (!$suscripcion->relationLoaded('plan') && $suscripcion->plan_id) {
+                            $suscripcion->load('plan');
+                        }
+                        return new SuscripcionResource($suscripcion);
+                    }
+                    return null;
+                }
             ),
             'rutinas_asignadas' => $this->when(
                 $this->relationLoaded('rutinasAsignadas'),

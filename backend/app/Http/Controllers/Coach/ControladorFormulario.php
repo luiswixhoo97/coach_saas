@@ -3,6 +3,11 @@
 namespace App\Http\Controllers\Coach;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Coach\AlmacenarFormularioRequest;
+use App\Http\Requests\Coach\ActualizarFormularioRequest;
+use App\Http\Requests\Coach\SolicitudResponderFormularioPorCliente;
+use App\Http\Resources\FormularioResource;
+use App\Models\Cliente;
 use App\Models\Formulario;
 use App\Models\FormularioRespuesta;
 use Illuminate\Http\JsonResponse;
@@ -25,13 +30,7 @@ class ControladorFormulario extends Controller
             ->paginate(15);
 
         return response()->json([
-            'datos' => $formularios->map(fn($f) => [
-                'id' => $f->id,
-                'nombre' => $f->nombre,
-                'activo' => $f->activo,
-                'preguntas_count' => $f->cantidadPreguntas(),
-                'respuestas_count' => $f->respuestas_count,
-            ]),
+            'datos' => FormularioResource::collection($formularios),
             'meta' => [
                 'total' => $formularios->total(),
                 'por_pagina' => $formularios->perPage(),
@@ -40,16 +39,8 @@ class ControladorFormulario extends Controller
         ]);
     }
 
-    public function almacenar(Request $request): JsonResponse
+    public function almacenar(AlmacenarFormularioRequest $request): JsonResponse
     {
-        $request->validate([
-            'nombre' => 'required|string|max:255',
-            'preguntas' => 'required|array|min:1',
-            'preguntas.*.texto' => 'required|string',
-            'preguntas.*.tipo' => 'required|in:texto,numero,seleccion,multiple',
-            'preguntas.*.opciones' => 'nullable|array',
-        ]);
-
         $coach = $this->getCoach($request);
 
         $formulario = Formulario::create([
@@ -61,7 +52,7 @@ class ControladorFormulario extends Controller
 
         return response()->json([
             'mensaje' => 'Formulario creado correctamente.',
-            'datos' => $formulario,
+            'datos' => new FormularioResource($formulario),
         ], 201);
     }
 
@@ -71,26 +62,22 @@ class ControladorFormulario extends Controller
 
         $formulario = Formulario::where('coach_id', $coach->id)->findOrFail($id);
 
-        return response()->json(['datos' => $formulario]);
+        return response()->json([
+            'datos' => new FormularioResource($formulario),
+        ]);
     }
 
-    public function actualizar(Request $request, int $id): JsonResponse
+    public function actualizar(ActualizarFormularioRequest $request, int $id): JsonResponse
     {
         $coach = $this->getCoach($request);
 
         $formulario = Formulario::where('coach_id', $coach->id)->findOrFail($id);
 
-        $request->validate([
-            'nombre' => 'sometimes|string|max:255',
-            'preguntas' => 'sometimes|array|min:1',
-            'activo' => 'sometimes|boolean',
-        ]);
-
         $formulario->update($request->only(['nombre', 'preguntas', 'activo']));
 
         return response()->json([
             'mensaje' => 'Formulario actualizado correctamente.',
-            'datos' => $formulario,
+            'datos' => new FormularioResource($formulario),
         ]);
     }
 
@@ -142,5 +129,43 @@ class ControladorFormulario extends Controller
                 'pagina_actual' => $respuestas->currentPage(),
             ],
         ]);
+    }
+
+    /**
+     * Permite al coach llenar un formulario en nombre del cliente.
+     */
+    public function responderPorCliente(SolicitudResponderFormularioPorCliente $request, int $cliente, int $formulario): JsonResponse
+    {
+        $coach = $this->getCoach($request);
+
+        // Verificar que el cliente pertenezca al coach
+        $clienteModel = Cliente::where('creado_por', $coach->id)
+            ->findOrFail($cliente);
+
+        // Verificar que el formulario pertenezca al coach
+        $formularioModel = Formulario::where('coach_id', $coach->id)
+            ->findOrFail($formulario);
+
+        // Crear o actualizar respuesta
+        $respuesta = FormularioRespuesta::updateOrCreate(
+            [
+                'formulario_id' => $formularioModel->id,
+                'cliente_id' => $clienteModel->id,
+            ],
+            [
+                'fecha' => now(),
+                'respuestas' => $request->respuestas,
+            ]
+        );
+
+        return response()->json([
+            'mensaje' => 'Formulario completado correctamente.',
+            'datos' => [
+                'id' => $respuesta->id,
+                'formulario_id' => $respuesta->formulario_id,
+                'cliente_id' => $respuesta->cliente_id,
+                'fecha' => $respuesta->fecha->format('Y-m-d H:i:s'),
+            ],
+        ], 201);
     }
 }

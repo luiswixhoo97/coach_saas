@@ -30,10 +30,21 @@ class ControladorAutenticacion extends Controller
             ]);
         }
 
-        if (!$user->activo) {
+        // Para coaches: deben estar activos para iniciar sesión
+        // Para clientes: pueden iniciar sesión aunque estén inactivos (solo verán su perfil)
+        if (!$user->activo && $user->esCoach()) {
             throw ValidationException::withMessages([
                 'email' => ['Tu cuenta ha sido desactivada. Contacta al administrador.'],
             ]);
+        }
+        
+        // Si es cliente inactivo, permitir login pero mostrar mensaje informativo
+        if (!$user->activo && $user->esCliente()) {
+            // Cargar relación cliente para verificar estado
+            $user->load('cliente');
+            if ($user->cliente && !$user->cliente->activo) {
+                // Permitir login pero el middleware redirigirá al perfil
+            }
         }
 
         // Revocar tokens anteriores

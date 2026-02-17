@@ -17,9 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
 
-        // Alias para middleware de roles
+        // Alias para middleware de roles y validaciones
         $middleware->alias([
             'rol' => \App\Http\Middleware\VerificarRol::class,
+            'cliente.activo' => \App\Http\Middleware\VerificarClienteActivo::class,
+            'formulario.completado' => \App\Http\Middleware\VerificarFormularioCompletado::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

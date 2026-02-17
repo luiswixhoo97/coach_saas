@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Coach;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Coach\AlmacenarParametroRequest;
+use App\Http\Requests\Coach\ActualizarParametroRequest;
+use App\Http\Resources\ParametroResource;
 use App\Models\Parametro;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,25 +28,17 @@ class ControladorParametro extends Controller
         })->orderBy('nombre')->get();
 
         return response()->json([
-            'datos' => $parametros->map(fn($p) => [
-                'id' => $p->id,
-                'nombre' => $p->nombre,
-                'unidad_medida' => $p->unidad_medida,
-                'tipo_dato' => $p->tipo_dato,
-                'es_predeterminado' => $p->es_predeterminado,
-                'editable' => !$p->es_predeterminado && $p->coach_id === $coach->id,
-            ]),
+            'datos' => $parametros->map(function ($p) use ($coach) {
+                $resource = new ParametroResource($p);
+                $data = $resource->toArray(request());
+                $data['editable'] = !$p->es_predeterminado && $p->coach_id === $coach->id;
+                return $data;
+            }),
         ]);
     }
 
-    public function almacenar(Request $request): JsonResponse
+    public function almacenar(AlmacenarParametroRequest $request): JsonResponse
     {
-        $request->validate([
-            'nombre' => 'required|string|max:255',
-            'unidad_medida' => 'required|string|max:50',
-            'tipo_dato' => 'required|in:numero,texto,booleano',
-        ]);
-
         $coach = $this->getCoach($request);
 
         $parametro = Parametro::create([
@@ -56,11 +51,11 @@ class ControladorParametro extends Controller
 
         return response()->json([
             'mensaje' => 'Parámetro creado correctamente.',
-            'datos' => $parametro,
+            'datos' => new ParametroResource($parametro),
         ], 201);
     }
 
-    public function actualizar(Request $request, int $id): JsonResponse
+    public function actualizar(ActualizarParametroRequest $request, int $id): JsonResponse
     {
         $coach = $this->getCoach($request);
 
@@ -68,17 +63,11 @@ class ControladorParametro extends Controller
             ->where('es_predeterminado', false)
             ->findOrFail($id);
 
-        $request->validate([
-            'nombre' => 'sometimes|string|max:255',
-            'unidad_medida' => 'sometimes|string|max:50',
-            'tipo_dato' => 'sometimes|in:numero,texto,booleano',
-        ]);
-
         $parametro->update($request->only(['nombre', 'unidad_medida', 'tipo_dato']));
 
         return response()->json([
             'mensaje' => 'Parámetro actualizado correctamente.',
-            'datos' => $parametro,
+            'datos' => new ParametroResource($parametro),
         ]);
     }
 

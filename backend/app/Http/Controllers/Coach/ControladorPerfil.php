@@ -34,6 +34,9 @@ class ControladorPerfil extends Controller
                 'avatar' => $coach->avatar,
                 'activo' => $coach->activo,
                 'email' => $request->user()->email,
+                'token_registro' => $coach->token_registro,
+                'link_registro' => $coach->obtenerLinkRegistro(),
+                'link_registro_activo' => $coach->link_registro_activo,
             ],
         ]);
     }
@@ -137,6 +140,46 @@ class ControladorPerfil extends Controller
                 ],
                 'suscripciones_activas' => $suscripcionesActivas,
                 'ingresos_mes' => $ingresosMes,
+            ],
+        ]);
+    }
+
+    /**
+     * Generar o regenerar link de registro.
+     */
+    public function generarLinkRegistro(Request $request): JsonResponse
+    {
+        $coach = $request->user()->coach;
+        
+        $token = $coach->generarTokenRegistro();
+        $link = $coach->obtenerLinkRegistro();
+        
+        return response()->json([
+            'mensaje' => 'Link de registro generado correctamente.',
+            'datos' => [
+                'token' => $token,
+                'link' => $link,
+            ],
+        ]);
+    }
+
+    /**
+     * Activar o desactivar link de registro.
+     */
+    public function toggleLinkRegistro(Request $request): JsonResponse
+    {
+        $coach = $request->user()->coach;
+        
+        $coach->update([
+            'link_registro_activo' => !$coach->link_registro_activo,
+        ]);
+        
+        return response()->json([
+            'mensaje' => $coach->link_registro_activo 
+                ? 'Link de registro activado.' 
+                : 'Link de registro desactivado.',
+            'datos' => [
+                'link_registro_activo' => $coach->link_registro_activo,
             ],
         ]);
     }

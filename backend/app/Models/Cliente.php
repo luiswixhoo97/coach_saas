@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -75,6 +76,18 @@ class Cliente extends ModeloBase
         return $this->hasMany(Orden::class);
     }
 
+    public function formulariosAsignados(): BelongsToMany
+    {
+        return $this->belongsToMany(Formulario::class, 'formulario_cliente')
+            ->withPivot('obligatorio', 'fecha_asignacion')
+            ->withTimestamps();
+    }
+
+    public function parametrosHistorial(): HasMany
+    {
+        return $this->hasMany(ParametroCliente::class);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Scopes
@@ -123,5 +136,49 @@ class Cliente extends ModeloBase
         return $this->suscripciones()
             ->whereHas('dietas', fn($q) => $q->where('activo', true))
             ->exists();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers - Formularios
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Obtener formulario obligatorio pendiente.
+     */
+    public function formularioObligatorioPendiente(): ?Formulario
+    {
+        $formulariosAsignados = $this->formulariosAsignados()
+            ->wherePivot('obligatorio', true)
+            ->get();
+        
+        foreach ($formulariosAsignados as $formulario) {
+            $completado = $this->respuestasFormularios()
+                ->where('formulario_id', $formulario->id)
+                ->exists();
+            
+            if (!$completado) {
+                return $formulario;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Verificar si tiene formulario obligatorio pendiente.
+     */
+    public function tieneFormularioPendiente(): bool
+    {
+        return $this->formularioObligatorioPendiente() !== null;
+    }
+
+    /**
+     * Verificar si puede acceder a funcionalidades completas.
+     */
+    public function puedeAcceder(): bool
+    {
+        return $this->activo && !$this->tieneFormularioPendiente();
     }
 }

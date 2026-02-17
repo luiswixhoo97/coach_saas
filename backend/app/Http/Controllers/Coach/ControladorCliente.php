@@ -32,7 +32,7 @@ class ControladorCliente extends Controller
     {
         $coach = $this->getCoach($request);
 
-        $query = Cliente::with('usuario')
+        $query = Cliente::with(['usuario', 'suscripciones.plan'])
             ->where('creado_por', $coach->id);
 
         if ($request->has('activo')) {
@@ -140,9 +140,40 @@ class ControladorCliente extends Controller
     }
 
     /**
-     * Desactivar cliente (soft delete).
+     * Activar cliente.
      */
-    public function eliminar(Request $request, int $id): JsonResponse
+    public function activar(Request $request, int $id): JsonResponse
+    {
+        $coach = $this->getCoach($request);
+        
+        $cliente = Cliente::where('creado_por', $coach->id)
+            ->findOrFail($id);
+        
+        return DB::transaction(function () use ($cliente, $coach) {
+            $cliente->update(['activo' => true]);
+            $cliente->usuario->update(['activo' => true]);
+            
+            // Asignar formulario inicial si existe y no está asignado
+            if ($coach->tieneFormularioInicial()) {
+                $cliente->formulariosAsignados()->syncWithoutDetaching([
+                    $coach->formulario_inicial_id => [
+                        'obligatorio' => true,
+                        'fecha_asignacion' => now(),
+                    ],
+                ]);
+            }
+            
+            return response()->json([
+                'mensaje' => 'Cliente activado correctamente.',
+                'datos' => new ClienteResource($cliente),
+            ]);
+        });
+    }
+
+    /**
+     * Desactivar cliente.
+     */
+    public function desactivar(Request $request, int $id): JsonResponse
     {
         $coach = $this->getCoach($request);
 
@@ -156,6 +187,14 @@ class ControladorCliente extends Controller
         return response()->json([
             'mensaje' => 'Cliente desactivado correctamente.',
         ]);
+    }
+
+    /**
+     * Desactivar cliente (soft delete) - Mantener para compatibilidad.
+     */
+    public function eliminar(Request $request, int $id): JsonResponse
+    {
+        return $this->desactivar($request, $id);
     }
 
     /**

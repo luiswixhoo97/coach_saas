@@ -80,4 +80,29 @@ class ControladorFormulario extends Controller
             'mensaje' => 'Respuestas enviadas correctamente.',
         ]);
     }
+
+    /**
+     * Obtener formulario obligatorio pendiente.
+     */
+    public function formularioPendiente(Request $request): JsonResponse
+    {
+        $cliente = $this->getCliente($request);
+        
+        $formulario = $cliente->formularioObligatorioPendiente();
+        
+        if (!$formulario) {
+            return response()->json([
+                'mensaje' => 'No tienes formularios pendientes.',
+                'datos' => null,
+            ]);
+        }
+        
+        return response()->json([
+            'datos' => [
+                'id' => $formulario->id,
+                'nombre' => $formulario->nombre,
+                'preguntas' => $formulario->preguntas,
+            ],
+        ]);
+    }
 }

@@ -17,7 +17,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('cliente')
-    ->middleware(['auth:sanctum', 'rol:cliente'])
+    ->middleware([
+        'auth:sanctum', 
+        'rol:cliente',
+        'cliente.activo',        // Nuevo
+        'formulario.completado'  // Nuevo
+    ])
     ->group(function () {
 
     /*
@@ -95,6 +100,9 @@ Route::prefix('cliente')
     
     Route::post('/formularios/{id}/responder', [ControladorFormulario::class, 'responder'])
         ->name('cliente.formularios.responder');
+    
+    Route::get('/formulario-pendiente', [ControladorFormulario::class, 'formularioPendiente'])
+        ->name('cliente.formulario-pendiente');
 
     /*
     |--------------------------------------------------------------------------
