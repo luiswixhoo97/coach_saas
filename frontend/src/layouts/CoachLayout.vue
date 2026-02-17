@@ -6,6 +6,7 @@ import AppLayout from '@/layouts/AppLayout.vue'
 const route = useRoute()
 const sidebarOpen = ref(false)
 const isDesktop = ref(false)
+const configSubmenuOpen = ref(false)
 
 const MOBILE_BREAKPOINT = 768
 
@@ -20,6 +21,14 @@ function isActive(name) {
 
 function closeSidebar() {
   sidebarOpen.value = false
+}
+
+function toggleConfigSubmenu() {
+  configSubmenuOpen.value = !configSubmenuOpen.value
+}
+
+function closeConfigSubmenu() {
+  configSubmenuOpen.value = false
 }
 
 onMounted(() => {
@@ -153,6 +162,36 @@ const showTopbar = computed(() => {
             <span class="coach-layout__sidebar-link-text">Chat</span>
           </RouterLink>
           <RouterLink
+            :to="{ name: 'CoachFormularios' }"
+            class="coach-layout__sidebar-link"
+            :class="{ 'coach-layout__sidebar-link--active': isActive('CoachFormularios') }"
+            @click="closeSidebar"
+          >
+            <div class="coach-layout__sidebar-link-bg"></div>
+            <div class="coach-layout__sidebar-link-indicator"></div>
+            <div class="coach-layout__sidebar-icon-wrapper">
+              <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            <span class="coach-layout__sidebar-link-text">Formularios</span>
+          </RouterLink>
+          <RouterLink
+            :to="{ name: 'CoachParametros' }"
+            class="coach-layout__sidebar-link"
+            :class="{ 'coach-layout__sidebar-link--active': isActive('CoachParametros') }"
+            @click="closeSidebar"
+          >
+            <div class="coach-layout__sidebar-link-bg"></div>
+            <div class="coach-layout__sidebar-link-indicator"></div>
+            <div class="coach-layout__sidebar-icon-wrapper">
+              <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <span class="coach-layout__sidebar-link-text">Parámetros</span>
+          </RouterLink>
+          <RouterLink
             :to="{ name: 'CoachPerfil' }"
             class="coach-layout__sidebar-link"
             :class="{ 'coach-layout__sidebar-link--active': isActive('CoachPerfil') }"
@@ -194,6 +233,15 @@ const showTopbar = computed(() => {
 
       <RouterView />
 
+      <!-- Overlay para cerrar submenú móvil -->
+      <Transition name="overlay">
+        <div
+          v-if="configSubmenuOpen && !isDesktop"
+          class="coach-layout__submenu-overlay"
+          @click="closeConfigSubmenu"
+        />
+      </Transition>
+
       <template #bottom-nav>
         <div class="coach-layout__bottom-nav">
           <RouterLink
@@ -220,17 +268,6 @@ const showTopbar = computed(() => {
             <span class="coach-layout__nav-label">Usuarios</span>
           </RouterLink>
           <RouterLink
-            :to="{ name: 'CoachEjercicios' }"
-            class="coach-layout__nav-item"
-            :class="{ 'coach-layout__nav-item--active': isActive('CoachEjercicios') }"
-          >
-            <svg class="coach-layout__nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6.5 6.5h11M6.5 6.5v11M6.5 17.5h11M17.5 6.5v11M4 12h4M16 12h4M12 4v4M12 16v4"/>
-              <path d="M12 8v8M8 12h8"/>
-            </svg>
-            <span class="coach-layout__nav-label">Ejercicios</span>
-          </RouterLink>
-          <RouterLink
             :to="{ name: 'CoachRutinas' }"
             class="coach-layout__nav-item"
             :class="{ 'coach-layout__nav-item--active': isActive('CoachRutinas') }"
@@ -250,17 +287,70 @@ const showTopbar = computed(() => {
             </svg>
             <span class="coach-layout__nav-label">Chat</span>
           </RouterLink>
-          <RouterLink
-            :to="{ name: 'CoachPerfil' }"
-            class="coach-layout__nav-item"
-            :class="{ 'coach-layout__nav-item--active': isActive('CoachPerfil') }"
-          >
-            <svg class="coach-layout__nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-            <span class="coach-layout__nav-label">Perfil</span>
-          </RouterLink>
+          <div class="coach-layout__nav-item-wrapper">
+            <button
+              type="button"
+              class="coach-layout__nav-item coach-layout__nav-item--config"
+              :class="{ 'coach-layout__nav-item--active': isActive('CoachFormularios') || isActive('CoachParametros') || isActive('CoachEjercicios') || isActive('CoachPerfil') }"
+              @click="toggleConfigSubmenu"
+            >
+              <svg class="coach-layout__nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/>
+              </svg>
+              <span class="coach-layout__nav-label">Config</span>
+            </button>
+            <Transition name="submenu">
+              <div v-if="configSubmenuOpen" class="coach-layout__submenu">
+                <RouterLink
+                  :to="{ name: 'CoachFormularios' }"
+                  class="coach-layout__submenu-item"
+                  :class="{ 'coach-layout__submenu-item--active': isActive('CoachFormularios') }"
+                  @click="closeConfigSubmenu"
+                >
+                  <svg class="coach-layout__submenu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  <span>Formularios</span>
+                </RouterLink>
+                <RouterLink
+                  :to="{ name: 'CoachParametros' }"
+                  class="coach-layout__submenu-item"
+                  :class="{ 'coach-layout__submenu-item--active': isActive('CoachParametros') }"
+                  @click="closeConfigSubmenu"
+                >
+                  <svg class="coach-layout__submenu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                  </svg>
+                  <span>Parámetros</span>
+                </RouterLink>
+                <RouterLink
+                  :to="{ name: 'CoachEjercicios' }"
+                  class="coach-layout__submenu-item"
+                  :class="{ 'coach-layout__submenu-item--active': isActive('CoachEjercicios') }"
+                  @click="closeConfigSubmenu"
+                >
+                  <svg class="coach-layout__submenu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6.5 6.5h11M6.5 6.5v11M6.5 17.5h11M17.5 6.5v11M4 12h4M16 12h4M12 4v4M12 16v4"/>
+                    <path d="M12 8v8M8 12h8"/>
+                  </svg>
+                  <span>Ejercicios</span>
+                </RouterLink>
+                <RouterLink
+                  :to="{ name: 'CoachPerfil' }"
+                  class="coach-layout__submenu-item"
+                  :class="{ 'coach-layout__submenu-item--active': isActive('CoachPerfil') }"
+                  @click="closeConfigSubmenu"
+                >
+                  <svg class="coach-layout__submenu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  <span>Perfil</span>
+                </RouterLink>
+              </div>
+            </Transition>
+          </div>
         </div>
       </template>
     </AppLayout>
@@ -597,5 +687,75 @@ const showTopbar = computed(() => {
 .coach-layout__nav-label {
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+
+/* Submenú móvil */
+.coach-layout__nav-item-wrapper {
+  position: relative;
+}
+
+.coach-layout__nav-item--config {
+  cursor: pointer;
+}
+
+.coach-layout__submenu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 19;
+}
+
+.coach-layout__submenu {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  right: 0;
+  background: #161616;
+  border: 1px solid #252525;
+  border-radius: 16px;
+  padding: 0.5rem;
+  min-width: 160px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  z-index: 21;
+  margin-bottom: 0.5rem;
+}
+
+.coach-layout__submenu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  color: #a0a0a0;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+}
+
+.coach-layout__submenu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.coach-layout__submenu-item--active {
+  background: rgba(0, 210, 97, 0.15);
+  color: #00D261;
+}
+
+.coach-layout__submenu-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.submenu-enter-active,
+.submenu-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.submenu-enter-from,
+.submenu-leave-to {
+  opacity: 0;
+  transform: translateX(0.5rem);
 }
 </style>

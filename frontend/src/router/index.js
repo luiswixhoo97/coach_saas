@@ -54,6 +54,16 @@ const routes = [
         path: 'chat/:id',
         name: 'CoachChatDetalle',
         component: () => import('@/views/coach/ChatView.vue')
+      },
+      {
+        path: 'formularios',
+        name: 'CoachFormularios',
+        component: () => import('@/views/coach/FormulariosView.vue')
+      },
+      {
+        path: 'parametros',
+        name: 'CoachParametros',
+        component: () => import('@/views/coach/ParametrosView.vue')
       }
     ]
   },
