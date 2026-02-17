@@ -26,6 +26,9 @@ class ControladorPerfil extends Controller
             ], 404);
         }
 
+        // Cargar formulario estándar si existe
+        $coach->load('formularioInicial');
+
         return response()->json([
             'datos' => [
                 'id' => $coach->id,
@@ -37,6 +40,11 @@ class ControladorPerfil extends Controller
                 'token_registro' => $coach->token_registro,
                 'link_registro' => $coach->obtenerLinkRegistro(),
                 'link_registro_activo' => $coach->link_registro_activo,
+                'formulario_inicial_id' => $coach->formulario_inicial_id,
+                'formulario_estandar' => $coach->formularioInicial ? [
+                    'id' => $coach->formularioInicial->id,
+                    'nombre' => $coach->formularioInicial->nombre,
+                ] : null,
             ],
         ]);
     }
@@ -49,11 +57,27 @@ class ControladorPerfil extends Controller
         $request->validate([
             'nombre' => 'sometimes|string|max:255',
             'bio' => 'nullable|string',
+            'formulario_inicial_id' => 'nullable|exists:formularios,id',
         ]);
 
         $coach = $request->user()->coach;
 
-        $coach->update($request->only(['nombre', 'bio']));
+        // Verificar que el formulario pertenezca al coach si se está actualizando
+        if ($request->has('formulario_inicial_id') && $request->formulario_inicial_id) {
+            $formulario = \App\Models\Formulario::where('coach_id', $coach->id)
+                ->find($request->formulario_inicial_id);
+            
+            if (!$formulario) {
+                return response()->json([
+                    'mensaje' => 'El formulario seleccionado no existe o no pertenece a tu cuenta.',
+                ], 400);
+            }
+        }
+
+        $coach->update($request->only(['nombre', 'bio', 'formulario_inicial_id']));
+
+        // Recargar relación
+        $coach->load('formularioInicial');
 
         return response()->json([
             'mensaje' => 'Perfil actualizado correctamente.',
@@ -62,6 +86,11 @@ class ControladorPerfil extends Controller
                 'nombre' => $coach->nombre,
                 'bio' => $coach->bio,
                 'avatar' => $coach->avatar,
+                'formulario_inicial_id' => $coach->formulario_inicial_id,
+                'formulario_estandar' => $coach->formularioInicial ? [
+                    'id' => $coach->formularioInicial->id,
+                    'nombre' => $coach->formularioInicial->nombre,
+                ] : null,
             ],
         ]);
     }

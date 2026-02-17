@@ -21,7 +21,10 @@ class VerificarFormularioCompletado
             return $next($request);
         }
         
-        // Permitir acceso a perfil y formulario pendiente
+        // No bloquear el acceso si hay formulario pendiente
+        // El cliente puede usar todas las funcionalidades
+        // El contenedor de advertencia en el perfil le recordará que debe completarlo
+        // Solo permitir acceso a perfil y formulario pendiente si se solicita explícitamente
         $ruta = $request->route()?->getName();
         if ($ruta && (
             str_starts_with($ruta, 'cliente.perfil') || 
@@ -31,13 +34,7 @@ class VerificarFormularioCompletado
             return $next($request);
         }
         
-        if ($cliente->tieneFormularioPendiente()) {
-            return response()->json([
-                'mensaje' => 'Debes completar el formulario pendiente antes de acceder.',
-                'redirigir' => '/cliente/formulario-pendiente',
-            ], 403);
-        }
-        
+        // Permitir acceso a todas las rutas, no bloquear
         return $next($request);
     }
 }

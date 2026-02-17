@@ -11,7 +11,7 @@ class SolicitudResponderFormularioPorCliente extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return $this->user()->esCoach();
     }
 
     /**
@@ -22,7 +22,16 @@ class SolicitudResponderFormularioPorCliente extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'respuestas' => 'required|array',
+            'respuestas.*' => 'nullable', // Permitir valores null
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'respuestas.required' => 'Las respuestas del formulario son requeridas.',
+            'respuestas.array' => 'Las respuestas deben ser un arreglo.',
         ];
     }
 }

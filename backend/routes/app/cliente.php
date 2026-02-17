@@ -98,8 +98,8 @@ Route::prefix('cliente')
     Route::get('/formularios/{id}', [ControladorFormulario::class, 'mostrar'])
         ->name('cliente.formularios.mostrar');
     
-    Route::post('/formularios/{id}/responder', [ControladorFormulario::class, 'responder'])
-        ->name('cliente.formularios.responder');
+    Route::post('/formulario-estandar/responder', [ControladorFormulario::class, 'responder'])
+        ->name('cliente.formulario-estandar.responder');
     
     Route::get('/formulario-pendiente', [ControladorFormulario::class, 'formularioPendiente'])
         ->name('cliente.formulario-pendiente');

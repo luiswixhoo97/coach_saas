@@ -24,17 +24,35 @@ class ControladorFormulario extends Controller
     {
         $coach = $this->getCoach($request);
 
-        $formularios = Formulario::withCount('respuestas')
-            ->where('coach_id', $coach->id)
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+        // Solo mostrar el formulario estándar (el primero/único)
+        $formularioEstandar = null;
+        if ($coach->tieneFormularioInicial()) {
+            $formularioEstandar = Formulario::withCount('respuestas')
+                ->where('id', $coach->formulario_inicial_id)
+                ->first();
+        }
+
+        // Si no hay formulario estándar, buscar el primero creado
+        if (!$formularioEstandar) {
+            $formularioEstandar = Formulario::withCount('respuestas')
+                ->where('coach_id', $coach->id)
+                ->orderBy('created_at', 'asc')
+                ->first();
+            
+            // Si existe, asignarlo como estándar
+            if ($formularioEstandar) {
+                $coach->update(['formulario_inicial_id' => $formularioEstandar->id]);
+            }
+        }
+
+        $datos = $formularioEstandar ? [new FormularioResource($formularioEstandar)] : [];
 
         return response()->json([
-            'datos' => FormularioResource::collection($formularios),
+            'datos' => $datos,
             'meta' => [
-                'total' => $formularios->total(),
-                'por_pagina' => $formularios->perPage(),
-                'pagina_actual' => $formularios->currentPage(),
+                'total' => $formularioEstandar ? 1 : 0,
+                'por_pagina' => 15,
+                'pagina_actual' => 1,
             ],
         ]);
     }
@@ -43,12 +61,20 @@ class ControladorFormulario extends Controller
     {
         $coach = $this->getCoach($request);
 
+        // Si el coach no tiene un formulario estándar, este será el primero y se asigna automáticamente
+        $esPrimerFormulario = !$coach->tieneFormularioInicial();
+
         $formulario = Formulario::create([
             'coach_id' => $coach->id,
             'nombre' => $request->nombre,
             'preguntas' => $request->preguntas,
             'activo' => true,
         ]);
+
+        // Si es el primer formulario, asignarlo automáticamente como formulario estándar
+        if ($esPrimerFormulario) {
+            $coach->update(['formulario_inicial_id' => $formulario->id]);
+        }
 
         return response()->json([
             'mensaje' => 'Formulario creado correctamente.',
@@ -132,9 +158,11 @@ class ControladorFormulario extends Controller
     }
 
     /**
-     * Permite al coach llenar un formulario en nombre del cliente.
+     * Permite al coach llenar el formulario estándar en nombre del cliente.
+     * Usa el formulario estándar del coach (formulario_inicial_id).
+     * Permite valores null para preguntas no contestadas.
      */
-    public function responderPorCliente(SolicitudResponderFormularioPorCliente $request, int $cliente, int $formulario): JsonResponse
+    public function responderPorCliente(SolicitudResponderFormularioPorCliente $request, int $cliente): JsonResponse
     {
         $coach = $this->getCoach($request);
 
@@ -142,19 +170,29 @@ class ControladorFormulario extends Controller
         $clienteModel = Cliente::where('creado_por', $coach->id)
             ->findOrFail($cliente);
 
-        // Verificar que el formulario pertenezca al coach
-        $formularioModel = Formulario::where('coach_id', $coach->id)
-            ->findOrFail($formulario);
+        // Usar el formulario estándar del coach
+        if (!$coach->tieneFormularioInicial()) {
+            return response()->json([
+                'mensaje' => 'No tienes un formulario estándar configurado.',
+            ], 400);
+        }
+
+        $formularioEstandar = $coach->formularioInicial;
+
+        // Convertir strings vacíos a null para mantener consistencia
+        $respuestas = array_map(function($respuesta) {
+            return $respuesta === '' || $respuesta === null ? null : $respuesta;
+        }, $request->respuestas);
 
         // Crear o actualizar respuesta
         $respuesta = FormularioRespuesta::updateOrCreate(
             [
-                'formulario_id' => $formularioModel->id,
+                'formulario_id' => $formularioEstandar->id,
                 'cliente_id' => $clienteModel->id,
             ],
             [
                 'fecha' => now(),
-                'respuestas' => $request->respuestas,
+                'respuestas' => $respuestas,
             ]
         );
 

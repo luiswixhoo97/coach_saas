@@ -147,20 +147,38 @@ class Cliente extends ModeloBase
     /**
      * Obtener formulario obligatorio pendiente.
      */
+    /**
+     * Obtener el formulario estándar pendiente del coach.
+     * Este es el formulario que el coach usa para todos sus clientes
+     * (ej: "¿Cuántas veces comes?", "¿Tienes alergias?", etc.)
+     */
     public function formularioObligatorioPendiente(): ?Formulario
     {
-        $formulariosAsignados = $this->formulariosAsignados()
-            ->wherePivot('obligatorio', true)
-            ->get();
+        // Cargar relación del coach si no está cargada
+        if (!$this->relationLoaded('coach')) {
+            $this->load('coach');
+        }
         
-        foreach ($formulariosAsignados as $formulario) {
-            $completado = $this->respuestasFormularios()
-                ->where('formulario_id', $formulario->id)
-                ->exists();
-            
-            if (!$completado) {
-                return $formulario;
-            }
+        // Si el cliente no está activo o no tiene coach, no hay formulario pendiente
+        if (!$this->activo || !$this->coach) {
+            return null;
+        }
+        
+        // Buscar el formulario estándar del coach (formulario_inicial_id)
+        if (!$this->coach->tieneFormularioInicial()) {
+            return null;
+        }
+        
+        $formularioEstandar = $this->coach->formularioInicial;
+        
+        // Verificar si el cliente ya completó este formulario
+        $completado = $this->respuestasFormularios()
+            ->where('formulario_id', $formularioEstandar->id)
+            ->exists();
+        
+        // Si no está completado, es pendiente
+        if (!$completado) {
+            return $formularioEstandar;
         }
         
         return null;

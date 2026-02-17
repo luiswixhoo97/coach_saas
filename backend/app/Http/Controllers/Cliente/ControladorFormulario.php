@@ -56,23 +56,41 @@ class ControladorFormulario extends Controller
         ]);
     }
 
-    public function responder(Request $request, int $id): JsonResponse
+    /**
+     * Responder el formulario estándar del coach.
+     * Permite valores null para preguntas no contestadas.
+     */
+    public function responder(Request $request): JsonResponse
     {
         $cliente = $this->getCliente($request);
+        
+        // Cargar relación del coach
+        $cliente->load('coach');
+        
+        // Usar el formulario estándar del coach (formulario_inicial_id)
+        if (!$cliente->coach || !$cliente->coach->tieneFormularioInicial()) {
+            return response()->json([
+                'mensaje' => 'Tu coach no tiene un formulario estándar configurado.',
+            ], 400);
+        }
 
-        $formulario = Formulario::where('coach_id', $cliente->creado_por)
-            ->where('activo', true)
-            ->findOrFail($id);
+        $formularioEstandar = $cliente->coach->formularioInicial;
 
         $request->validate([
             'respuestas' => 'required|array',
+            'respuestas.*' => 'nullable', // Permitir valores null
         ]);
 
+        // Convertir strings vacíos a null para mantener consistencia
+        $respuestas = array_map(function($respuesta) {
+            return $respuesta === '' || $respuesta === null ? null : $respuesta;
+        }, $request->respuestas);
+
         FormularioRespuesta::updateOrCreate(
-            ['formulario_id' => $formulario->id, 'cliente_id' => $cliente->id],
+            ['formulario_id' => $formularioEstandar->id, 'cliente_id' => $cliente->id],
             [
                 'fecha' => now(),
-                'respuestas' => $request->respuestas,
+                'respuestas' => $respuestas,
             ]
         );
 
@@ -82,11 +100,15 @@ class ControladorFormulario extends Controller
     }
 
     /**
-     * Obtener formulario obligatorio pendiente.
+     * Obtener formulario estándar pendiente del coach.
+     * Este es el formulario que el coach usa para todos sus clientes.
      */
     public function formularioPendiente(Request $request): JsonResponse
     {
         $cliente = $this->getCliente($request);
+        
+        // Cargar la relación del coach para verificar formulario estándar
+        $cliente->load('coach.formularioInicial');
         
         $formulario = $cliente->formularioObligatorioPendiente();
         
