@@ -5,12 +5,16 @@ import { useApi } from '@/composables/useApi'
 import { useAuth } from '@/composables/useAuth'
 import BaseSegmentedControl from '@/components/ui/BaseSegmentedControl.vue'
 
-const { get, cargando } = useApi()
+const { get, post, put, cargando } = useApi()
 const { logout } = useAuth()
 const perfil = ref(null)
 const dashboard = ref(null)
 const error = ref('')
 const cerrandoSesion = ref(false)
+const linkCopiado = ref(false)
+const generando = ref(false)
+const linkActivo = ref(false)
+const linkInput = ref(null)
 
 // Tabs: Estadísticas | Otros
 const tabSeleccionado = ref('estadisticas')
@@ -58,10 +62,47 @@ onMounted(async () => {
     ])
     perfil.value = resPerfil.datos
     dashboard.value = resDashboard?.datos ?? null
+    linkActivo.value = perfil.value?.link_registro_activo ?? false
   } catch (e) {
     error.value = e.message || 'No se pudo cargar el perfil.'
   }
 })
+
+async function generarLink() {
+  try {
+    generando.value = true
+    const response = await post('/coach/perfil/generar-link-registro')
+    perfil.value.link_registro = response.datos.link
+    perfil.value.token_registro = response.datos.token
+    linkActivo.value = true
+    perfil.value.link_registro_activo = true
+  } catch (e) {
+    error.value = e.message || 'Error al generar link'
+  } finally {
+    generando.value = false
+  }
+}
+
+async function toggleLink() {
+  try {
+    await put('/coach/perfil/toggle-link-registro')
+    perfil.value.link_registro_activo = linkActivo.value
+  } catch (e) {
+    linkActivo.value = !linkActivo.value // Revertir
+    error.value = e.message || 'Error al cambiar estado del link'
+  }
+}
+
+function copiarLink() {
+  if (linkInput.value) {
+    linkInput.value.select()
+    document.execCommand('copy')
+    linkCopiado.value = true
+    setTimeout(() => {
+      linkCopiado.value = false
+    }, 2000)
+  }
+}
 </script>
 
 <template>
@@ -104,6 +145,57 @@ onMounted(async () => {
         </div>
         <div class="perfil__bio-card">
           <p class="perfil__bio-text">{{ perfil.bio }}</p>
+        </div>
+      </section>
+
+      <!-- Link de Registro - Siempre visible -->
+      <section class="perfil__section">
+        <div class="perfil__section-header">
+          <h2 class="perfil__section-title">Link de Registro</h2>
+        </div>
+        <div class="perfil__link-registro">
+          <p class="perfil__link-registro-desc">
+            Comparte este link para que nuevos clientes se registren
+          </p>
+          
+          <div v-if="perfil.link_registro" class="perfil__link-registro-container">
+            <input
+              type="text"
+              :value="perfil.link_registro"
+              readonly
+              class="perfil__link-input"
+              ref="linkInput"
+            />
+            <button
+              @click="copiarLink"
+              class="perfil__link-btn"
+            >
+              {{ linkCopiado ? 'Copiado' : 'Copiar' }}
+            </button>
+          </div>
+          
+          <div v-else class="perfil__link-registro-empty">
+            <p class="perfil__link-registro-empty-text">No tienes un link de registro generado</p>
+          </div>
+          
+          <div class="perfil__link-registro-actions">
+            <button
+              @click="generarLink"
+              class="perfil__btn perfil__btn--outline"
+              :disabled="generando"
+            >
+              {{ perfil.link_registro ? 'Regenerar Link' : 'Generar Link' }}
+            </button>
+            
+            <label v-if="perfil.link_registro" class="perfil__link-toggle">
+              <input
+                type="checkbox"
+                v-model="linkActivo"
+                @change="toggleLink"
+              />
+              <span>Link activo</span>
+            </label>
+          </div>
         </div>
       </section>
 
@@ -196,6 +288,50 @@ onMounted(async () => {
         <div class="perfil__section-header">
           <h2 class="perfil__section-title">Otros</h2>
         </div>
+        
+        <!-- Link de Registro -->
+        <div class="perfil__link-registro">
+          <h3 class="perfil__link-registro-title">Link de Registro</h3>
+          <p class="perfil__link-registro-desc">
+            Comparte este link para que nuevos clientes se registren
+          </p>
+          
+          <div v-if="perfil.link_registro" class="perfil__link-registro-container">
+            <input
+              type="text"
+              :value="perfil.link_registro"
+              readonly
+              class="perfil__link-input"
+              ref="linkInput"
+            />
+            <button
+              @click="copiarLink"
+              class="perfil__link-btn"
+            >
+              {{ linkCopiado ? 'Copiado' : 'Copiar' }}
+            </button>
+          </div>
+          
+          <div class="perfil__link-registro-actions">
+            <button
+              @click="generarLink"
+              class="perfil__btn perfil__btn--outline"
+              :disabled="generando"
+            >
+              {{ perfil.link_registro ? 'Regenerar Link' : 'Generar Link' }}
+            </button>
+            
+            <label class="perfil__link-toggle">
+              <input
+                type="checkbox"
+                v-model="linkActivo"
+                @change="toggleLink"
+              />
+              <span>Link activo</span>
+            </label>
+          </div>
+        </div>
+        
         <div class="perfil__otros-placeholder">
           <p class="perfil__otros-text">Contenido adicional disponible próximamente.</p>
         </div>
@@ -443,6 +579,89 @@ onMounted(async () => {
   font-size: 0.875rem;
   color: #697586;
   margin: 0;
+}
+
+/* Link de Registro */
+.perfil__link-registro {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.perfil__link-registro-desc {
+  font-size: 0.8125rem;
+  color: #697586;
+  margin: 0 0 1rem;
+}
+
+.perfil__link-registro-empty {
+  background: #161616;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.perfil__link-registro-empty-text {
+  font-size: 0.8125rem;
+  color: #697586;
+  margin: 0;
+}
+
+.perfil__link-registro-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.perfil__link-input {
+  flex: 1;
+  background: #161616;
+  border: 1px solid #252525;
+  border-radius: 8px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+  color: #fff;
+  font-family: monospace;
+}
+
+.perfil__link-btn {
+  padding: 0.625rem 1rem;
+  background: rgba(0, 210, 97, 0.1);
+  border: 1px solid rgba(0, 210, 97, 0.3);
+  border-radius: 8px;
+  color: #00D261;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.perfil__link-btn:hover {
+  background: rgba(0, 210, 97, 0.2);
+  border-color: #00D261;
+}
+
+.perfil__link-registro-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.perfil__link-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #a0a0a0;
+  cursor: pointer;
+}
+
+.perfil__link-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #00D261;
+  cursor: pointer;
 }
 
 /* Actions */

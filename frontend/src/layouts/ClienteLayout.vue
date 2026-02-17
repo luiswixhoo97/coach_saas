@@ -1,9 +1,14 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useApi } from '@/composables/useApi'
+import { useAuthStore } from '@/stores/auth'
 import AppLayout from '@/layouts/AppLayout.vue'
 
 const route = useRoute()
+const router = useRouter()
+const api = useApi()
+const authStore = useAuthStore()
 const sidebarOpen = ref(false)
 const isDesktop = ref(false)
 
@@ -25,10 +30,59 @@ function closeSidebar() {
 onMounted(() => {
   checkDesktop()
   window.addEventListener('resize', checkDesktop)
+  verificarEstadoCliente()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkDesktop)
+})
+
+// Verificar estado del cliente y redirigir si es necesario
+async function verificarEstadoCliente() {
+  if (!authStore.esCliente) return
+  
+  // Permitir acceso a perfil y formulario pendiente siempre
+  if (route.name === 'ClientePerfil' || route.name === 'ClienteFormularioPendiente') {
+    return
+  }
+  
+  try {
+    const response = await api.get('/cliente/perfil')
+    const cliente = response.datos
+    
+    // Si está inactivo, redirigir a perfil (pero permitir que acceda)
+    if (!cliente.activo) {
+      // Solo redirigir si no está ya en el perfil
+      if (route.name !== 'ClientePerfil') {
+        router.push({ name: 'ClientePerfil' })
+      }
+      return
+    }
+    
+    // Si está activo pero tiene formulario pendiente, redirigir
+    if (cliente.activo) {
+      try {
+        const formularioResponse = await api.get('/cliente/formulario-pendiente')
+        if (formularioResponse.datos && route.name !== 'ClienteFormularioPendiente') {
+          router.push({ name: 'ClienteFormularioPendiente' })
+        }
+      } catch (err) {
+        // No hay formulario pendiente, continuar
+      }
+    }
+  } catch (err) {
+    // Si hay error 403 (cuenta inactiva), redirigir a perfil
+    if (err.response?.status === 403) {
+      if (route.name !== 'ClientePerfil') {
+        router.push({ name: 'ClientePerfil' })
+      }
+    }
+  }
+}
+
+// Verificar cuando cambia la ruta
+watch(() => route.name, () => {
+  verificarEstadoCliente()
 })
 
 const showBottomNav = computed(() => !isDesktop.value)

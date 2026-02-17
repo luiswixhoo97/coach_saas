@@ -75,13 +75,22 @@ function inicialesAvatar(datos) {
 
 onMounted(async () => {
   try {
-    // Cargar perfil y estadísticas en paralelo
-    const [resPerfil, resProgreso] = await Promise.all([
-      get('/cliente/perfil'),
-      get('/cliente/progreso').catch(() => ({ datos: [] }))
-    ])
+    // Cargar perfil primero
+    const resPerfil = await get('/cliente/perfil')
     perfil.value = resPerfil.datos
-    estadisticasRaw.value = resProgreso.datos || []
+    
+    // Solo cargar estadísticas si el cliente está activo
+    if (perfil.value?.activo) {
+      try {
+        const resProgreso = await get('/cliente/progreso')
+        estadisticasRaw.value = resProgreso.datos || []
+      } catch (e) {
+        // Si falla, simplemente no mostrar estadísticas
+        estadisticasRaw.value = []
+      }
+    } else {
+      estadisticasRaw.value = []
+    }
   } catch (e) {
     error.value = e.message || 'No se pudo cargar el perfil.'
   }
@@ -198,9 +207,12 @@ onMounted(async () => {
       <section class="perfil__section" v-if="tabSeleccionado === 'estadisticas'">
         <div class="perfil__section-header">
           <h2 class="perfil__section-title">Estadísticas</h2>
-          <span class="perfil__see-all" v-if="estadisticas.length">Ver todo</span>
+          <span class="perfil__see-all" v-if="estadisticas.length && perfil.activo">Ver todo</span>
         </div>
-        <div class="perfil__stats-grid" v-if="estadisticas.length">
+        <div v-if="!perfil.activo" class="perfil__otros-placeholder">
+          <p class="perfil__otros-text">Tu cuenta está inactiva. Las estadísticas estarán disponibles una vez que el coach active tu cuenta.</p>
+        </div>
+        <div class="perfil__stats-grid" v-else-if="estadisticas.length">
           <CircularProgress
             v-for="stat in estadisticas"
             :key="stat.nombre"
@@ -234,9 +246,23 @@ onMounted(async () => {
         @close="modalHistorial = false"
       />
 
+      <!-- Mensaje de cuenta inactiva -->
+      <div v-if="!perfil.activo" class="perfil__section">
+        <div class="perfil__otros-placeholder" style="background-color: #FEF3C7; border: 1px solid #FCD34D; border-radius: 0.5rem; padding: 1rem;">
+          <p class="perfil__otros-text" style="color: #92400E; margin: 0;">
+            <strong>Cuenta inactiva:</strong> Tu cuenta está pendiente de activación. 
+            Una vez que el coach verifique tu pago, podrás acceder a todas las funcionalidades.
+          </p>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="perfil__actions">
-        <RouterLink to="/cliente/rutina" class="perfil__btn perfil__btn--outline">
+        <RouterLink 
+          v-if="perfil.activo"
+          to="/cliente/rutina" 
+          class="perfil__btn perfil__btn--outline"
+        >
           Ver mis rutinas
         </RouterLink>
         <button

@@ -7,6 +7,13 @@ const routes = [
     name: 'Home',
     component: () => import('@/views/HomeView.vue')
   },
+  // Ruta pública de registro
+  {
+    path: '/registro/:token',
+    name: 'RegistroPublico',
+    component: () => import('@/views/RegistroPublicoView.vue'),
+    meta: { requiresGuest: false } // Público, sin restricción
+  },
   // Rutas de autenticación
   {
     path: '/login',
@@ -64,6 +71,11 @@ const routes = [
         path: 'parametros',
         name: 'CoachParametros',
         component: () => import('@/views/coach/ParametrosView.vue')
+      },
+      {
+        path: 'clientes/:id/parametros',
+        name: 'CoachParametrosCliente',
+        component: () => import('@/views/coach/ParametrosClienteView.vue')
       }
     ]
   },
@@ -97,6 +109,11 @@ const routes = [
         path: 'chat',
         name: 'ClienteChat',
         component: () => import('@/views/cliente/ChatView.vue')
+      },
+      {
+        path: 'formulario-pendiente',
+        name: 'ClienteFormularioPendiente',
+        component: () => import('@/views/cliente/FormularioPendienteView.vue')
       }
     ]
   },

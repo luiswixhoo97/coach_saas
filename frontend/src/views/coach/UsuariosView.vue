@@ -3,12 +3,16 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useApi } from '@/composables/useApi'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import BaseTable from '@/components/ui/BaseTable.vue'
+import BaseSwitch from '@/components/ui/BaseSwitch.vue'
 import ClienteDetalleModal from '@/components/coach/ClienteDetalleModal.vue'
 import AsignarRutinaModal from '@/components/coach/AsignarRutinaModal.vue'
+import AsignarRutinaClienteModal from '@/components/coach/AsignarRutinaClienteModal.vue'
 import SubirDietaModal from '@/components/coach/SubirDietaModal.vue'
 import SubirDietaUsuariosModal from '@/components/coach/SubirDietaUsuariosModal.vue'
+import FormularioClienteModal from '@/components/coach/FormularioClienteModal.vue'
+import ParametrosClienteModal from '@/components/coach/ParametrosClienteModal.vue'
 
-const { get, cargando } = useApi()
+const { get, put, cargando } = useApi()
 const clientes = ref([])
 const meta = ref({ total: 0, por_pagina: 15, pagina_actual: 1, ultima_pagina: 1 })
 const error = ref('')
@@ -24,9 +28,15 @@ const MOBILE_BREAKPOINT = 768
 // Multi-select
 const selectedClientes = ref(new Set())
 const showAsignarRutinaModal = ref(false)
+const showAsignarRutinaClienteModal = ref(false)
 const showSubirDietaModal = ref(false)
 const showSubirDietaUsuariosModal = ref(false)
 const clienteParaAsignar = ref(null)
+const clientesProcesando = ref(new Set())
+const showFormularioClienteModal = ref(false)
+const formularioParaCliente = ref(null)
+const formulariosDisponibles = ref([])
+const showParametrosClienteModal = ref(false)
 
 const paginaActual = computed(() => meta.value.pagina_actual ?? 1)
 const totalPaginas = computed(() => meta.value.ultima_pagina ?? 1)
@@ -115,7 +125,13 @@ const clientesSeleccionados = computed(() => {
 
 function abrirAsignarRutina(cliente = null) {
   clienteParaAsignar.value = cliente
-  showAsignarRutinaModal.value = true
+  // Si hay un cliente específico (desktop), usar el modal que muestra rutinas
+  // Si no hay cliente (selección masiva), usar el modal de selección múltiple
+  if (cliente) {
+    showAsignarRutinaClienteModal.value = true
+  } else {
+    showAsignarRutinaModal.value = true
+  }
 }
 
 function abrirSubirDieta(cliente = null) {
@@ -133,6 +149,11 @@ function cerrarAsignarRutinaModal() {
   selectedClientes.value.clear()
 }
 
+function cerrarAsignarRutinaClienteModal() {
+  showAsignarRutinaClienteModal.value = false
+  clienteParaAsignar.value = null
+}
+
 function cerrarSubirDietaModal() {
   showSubirDietaModal.value = false
   clienteParaAsignar.value = null
@@ -141,6 +162,41 @@ function cerrarSubirDietaModal() {
 
 function cerrarSubirDietaUsuariosModal() {
   showSubirDietaUsuariosModal.value = false
+}
+
+async function activarCliente(id) {
+  clientesProcesando.value.add(id)
+  try {
+    await put(`/coach/clientes/${id}/activar`)
+    await cargarClientes(paginaActual.value)
+  } catch (e) {
+    error.value = e.message || 'Error al activar cliente'
+  } finally {
+    clientesProcesando.value.delete(id)
+  }
+}
+
+async function desactivarCliente(id) {
+  clientesProcesando.value.add(id)
+  try {
+    if (!confirm('¿Desactivar este cliente? Solo podrá ver su perfil hasta que lo reactives.')) {
+      return
+    }
+    await put(`/coach/clientes/${id}/desactivar`)
+    await cargarClientes(paginaActual.value)
+  } catch (e) {
+    error.value = e.message || 'Error al desactivar cliente'
+  } finally {
+    clientesProcesando.value.delete(id)
+  }
+}
+
+async function toggleClienteActivo(cliente) {
+  if (cliente.activo) {
+    await desactivarCliente(cliente.id)
+  } else {
+    await activarCliente(cliente.id)
+  }
 }
 
 async function onRutinaAsignada(clienteActualizado) {
@@ -169,6 +225,74 @@ async function onDietaEliminada() {
     const res = await get(`/coach/clientes/${detalleCliente.value.id}`)
     detalleCliente.value = res.datos ?? res.data ?? res
   }
+}
+
+async function onClienteActualizado(clienteActualizado) {
+  await cargarClientes(paginaActual.value)
+  if (modalDetalle.value && detalleCliente.value) {
+    detalleCliente.value = clienteActualizado
+  }
+}
+
+function abrirParametros(c) {
+  clienteParaAsignar.value = c
+  showParametrosClienteModal.value = true
+}
+
+function cerrarParametrosClienteModal() {
+  showParametrosClienteModal.value = false
+  clienteParaAsignar.value = null
+}
+
+function onParametrosGuardado() {
+  cargarClientes(paginaActual.value)
+}
+
+async function abrirFormulario(c) {
+  try {
+    // Cargar formularios disponibles
+    const response = await get('/coach/formularios')
+    formulariosDisponibles.value = response.datos || []
+    
+    if (formulariosDisponibles.value.length === 0) {
+      alert('No hay formularios disponibles. Crea un formulario primero.')
+      return
+    }
+    
+    // Si solo hay uno, abrirlo directamente
+    if (formulariosDisponibles.value.length === 1) {
+      formularioParaCliente.value = formulariosDisponibles.value[0]
+      clienteParaAsignar.value = c
+      showFormularioClienteModal.value = true
+      return
+    }
+    
+    // Si hay varios, mostrar selector
+    const opciones = formulariosDisponibles.value.map((f, i) => `${i + 1}. ${f.nombre}`).join('\n')
+    const seleccion = prompt(`Selecciona un formulario (1-${formulariosDisponibles.value.length}):\n${opciones}`)
+    
+    if (seleccion) {
+      const indice = parseInt(seleccion) - 1
+      if (indice >= 0 && indice < formulariosDisponibles.value.length) {
+        formularioParaCliente.value = formulariosDisponibles.value[indice]
+        clienteParaAsignar.value = c
+        showFormularioClienteModal.value = true
+      }
+    }
+  } catch (err) {
+    error.value = err.response?.data?.mensaje || 'Error al cargar formularios'
+  }
+}
+
+function cerrarFormularioClienteModal() {
+  showFormularioClienteModal.value = false
+  formularioParaCliente.value = null
+  clienteParaAsignar.value = null
+}
+
+function onFormularioCompletado() {
+  cerrarFormularioClienteModal()
+  cargarClientes(paginaActual.value)
 }
 
 onMounted(() => {
@@ -298,6 +422,7 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
                   <th class="usuarios__th">Objetivo</th>
                   <th class="usuarios__th">Suscripción</th>
                   <th class="usuarios__th">Tiene dieta</th>
+                  <th class="usuarios__th">Acciones</th>
                 </tr>
               </thead>
               <tbody class="usuarios__tbody">
@@ -314,12 +439,19 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
                   <td class="usuarios__td">{{ nombreCompleto(c) }}</td>
                   <td class="usuarios__td usuarios__td--email">{{ c.email || '—' }}</td>
                   <td class="usuarios__td">
-                    <span
-                      class="usuarios__badge"
-                      :class="{ 'usuarios__badge--active': c.activo }"
-                    >
-                      {{ c.activo ? 'Activo' : 'Inactivo' }}
-                    </span>
+                    <div class="usuarios__estado-container">
+                      <span
+                        class="usuarios__badge"
+                        :class="{ 'usuarios__badge--active': c.activo }"
+                      >
+                        {{ c.activo ? 'Activo' : 'Inactivo' }}
+                      </span>
+                      <BaseSwitch
+                        :model-value="c.activo"
+                        :loading="clientesProcesando.has(c.id)"
+                        @update:model-value="toggleClienteActivo(c)"
+                      />
+                    </div>
                   </td>
                   <td class="usuarios__td">{{ c.edad != null ? `${c.edad} años` : '—' }}</td>
                   <td class="usuarios__td">{{ c.altura ? `${c.altura} cm` : '—' }}</td>
@@ -340,6 +472,60 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
                     >
                       {{ c.tiene_dieta ? 'Sí' : 'No' }}
                     </span>
+                  </td>
+                  <td class="usuarios__td">
+                    <div class="usuarios__acciones">
+                      <button
+                        type="button"
+                        class="usuarios__accion-btn usuarios__accion-btn--primary"
+                        @click="abrirAsignarRutina(c)"
+                        title="Asignar rutina"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
+                          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                        </svg>
+                        Rutina
+                      </button>
+                      <button
+                        type="button"
+                        class="usuarios__accion-btn usuarios__accion-btn--primary"
+                        @click="abrirSubirDieta(c)"
+                        title="Subir dieta"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="17 8 12 3 7 8"/>
+                          <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Dieta
+                      </button>
+                      <button
+                        type="button"
+                        class="usuarios__accion-btn usuarios__accion-btn--primary"
+                        @click="abrirParametros(c)"
+                        title="Parámetros"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
+                          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        Parámetros
+                      </button>
+                      <button
+                        type="button"
+                        class="usuarios__accion-btn usuarios__accion-btn--primary"
+                        @click="abrirFormulario(c)"
+                        title="Llenar formulario"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                          <line x1="16" y1="13" x2="8" y2="13"/>
+                          <line x1="16" y1="17" x2="8" y2="17"/>
+                          <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                        Formulario
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -400,14 +586,23 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
           @subir-dieta="abrirSubirDieta"
           @dieta-eliminada="onDietaEliminada"
           @rutina-asignada="onRutinaAsignada"
+          @cliente-actualizado="onClienteActualizado"
         />
 
-        <!-- Modal asignar rutina -->
+        <!-- Modal asignar rutina (selección masiva) -->
         <AsignarRutinaModal
           v-if="showAsignarRutinaModal"
           :cliente="clienteParaAsignar"
           :clientes="clienteParaAsignar ? [] : clientesSeleccionados"
           @close="cerrarAsignarRutinaModal"
+          @asignada="onRutinaAsignada"
+        />
+
+        <!-- Modal asignar rutina a cliente específico (desktop) -->
+        <AsignarRutinaClienteModal
+          v-if="showAsignarRutinaClienteModal && clienteParaAsignar"
+          :cliente="clienteParaAsignar"
+          @close="cerrarAsignarRutinaClienteModal"
           @asignada="onRutinaAsignada"
         />
 
@@ -426,6 +621,23 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
           :clientes="clientes"
           @close="cerrarSubirDietaUsuariosModal"
           @subida="onDietaSubida"
+        />
+
+        <!-- Modal formulario cliente -->
+        <FormularioClienteModal
+          v-if="showFormularioClienteModal && clienteParaAsignar && formularioParaCliente"
+          :cliente="clienteParaAsignar"
+          :formulario="formularioParaCliente"
+          @close="cerrarFormularioClienteModal"
+          @completado="onFormularioCompletado"
+        />
+
+        <!-- Modal parámetros cliente -->
+        <ParametrosClienteModal
+          v-if="showParametrosClienteModal && clienteParaAsignar"
+          :cliente="clienteParaAsignar"
+          @close="cerrarParametrosClienteModal"
+          @guardado="onParametrosGuardado"
         />
 
         <!-- Paginación -->
@@ -972,5 +1184,71 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
   height: 18px;
   cursor: pointer;
   accent-color: #00D261;
+}
+
+.usuarios__estado-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.usuarios__acciones {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.usuarios__accion-btn {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+}
+
+.usuarios__accion-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.usuarios__accion-btn--primary {
+  background: rgba(0, 210, 97, 0.1);
+  color: #00D261;
+  border: 1px solid rgba(0, 210, 97, 0.3);
+}
+
+.usuarios__accion-btn--primary:hover {
+  background: rgba(0, 210, 97, 0.2);
+  border-color: #00D261;
+  transform: translateY(-1px);
+}
+
+.usuarios__accion-btn--success {
+  background: rgba(0, 210, 97, 0.1);
+  color: #00D261;
+  border: 1px solid rgba(0, 210, 97, 0.3);
+}
+
+.usuarios__accion-btn--success:hover {
+  background: rgba(0, 210, 97, 0.2);
+  border-color: #00D261;
+}
+
+.usuarios__accion-btn--danger {
+  background: rgba(239, 92, 92, 0.1);
+  color: #EF5C5C;
+  border: 1px solid rgba(239, 92, 92, 0.3);
+}
+
+.usuarios__accion-btn--danger:hover {
+  background: rgba(239, 92, 92, 0.2);
+  border-color: #EF5C5C;
 }
 </style>

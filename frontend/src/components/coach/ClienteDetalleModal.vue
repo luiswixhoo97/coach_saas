@@ -2,8 +2,11 @@
 import { ref } from 'vue'
 import { useApi } from '@/composables/useApi'
 import Swal from 'sweetalert2'
+import BaseSwitch from '@/components/ui/BaseSwitch.vue'
 import RutinaDetalleModal from '@/components/coach/RutinaDetalleModal.vue'
 import AsignarRutinaClienteModal from '@/components/coach/AsignarRutinaClienteModal.vue'
+import FormularioClienteModal from '@/components/coach/FormularioClienteModal.vue'
+import { useRouter } from 'vue-router'
 
 /**
  * ClienteDetalleModal - Detalle del cliente en móvil (bottom sheet).
@@ -16,9 +19,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'asignar-rutina', 'subir-dieta', 'dieta-eliminada', 'rutina-asignada'])
+const emit = defineEmits(['close', 'asignar-rutina', 'subir-dieta', 'dieta-eliminada', 'rutina-asignada', 'cliente-actualizado'])
 
-const { del, get } = useApi()
+const { del, get, put } = useApi()
+const router = useRouter()
 
 // Estado para el modal de preview
 const showPreviewModal = ref(false)
@@ -32,6 +36,12 @@ const cargandoRutina = ref(false)
 
 // Estado para el modal de asignar rutina a cliente
 const showAsignarRutinaClienteModal = ref(false)
+const procesandoActivo = ref(false)
+
+// Estado para formularios
+const showFormularioClienteModal = ref(false)
+const formularioParaCliente = ref(null)
+const formulariosDisponibles = ref([])
 
 function nombreCompleto(c) {
   if (!c) return ''
@@ -141,6 +151,98 @@ async function onRutinaAsignada() {
     } catch (e) {
       console.error('Error al recargar datos del cliente:', e)
     }
+  }
+}
+
+async function activarCliente() {
+  if (!props.cliente?.id) return
+  
+  procesandoActivo.value = true
+  try {
+    await put(`/coach/clientes/${props.cliente.id}/activar`)
+    await Swal.fire({
+      title: 'Cliente activado',
+      text: 'El cliente ha sido activado correctamente.',
+      icon: 'success',
+      confirmButtonColor: '#00D261',
+      timer: 2000,
+      showConfirmButton: false
+    })
+    // Recargar datos del cliente
+    const res = await get(`/coach/clientes/${props.cliente.id}`)
+    const clienteActualizado = res.datos ?? res.data ?? res
+    emit('cliente-actualizado', clienteActualizado)
+  } catch (e) {
+    await Swal.fire({
+      title: 'Error',
+      text: e.message || 'No se pudo activar el cliente.',
+      icon: 'error',
+      confirmButtonColor: '#00D261'
+    })
+    // Recargar para revertir el cambio visual del switch
+    const res = await get(`/coach/clientes/${props.cliente.id}`)
+    const clienteActualizado = res.datos ?? res.data ?? res
+    emit('cliente-actualizado', clienteActualizado)
+  } finally {
+    procesandoActivo.value = false
+  }
+}
+
+async function desactivarCliente() {
+  if (!props.cliente?.id) return
+  
+  procesandoActivo.value = true
+  try {
+    const result = await Swal.fire({
+      title: '¿Desactivar cliente?',
+      text: 'El cliente solo podrá ver su perfil hasta que lo reactives.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, desactivar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#EF5C5C',
+      cancelButtonColor: '#666',
+      reverseButtons: true
+    })
+
+    if (!result.isConfirmed) {
+      return
+    }
+
+    await put(`/coach/clientes/${props.cliente.id}/desactivar`)
+    await Swal.fire({
+      title: 'Cliente desactivado',
+      text: 'El cliente ha sido desactivado correctamente.',
+      icon: 'success',
+      confirmButtonColor: '#00D261',
+      timer: 2000,
+      showConfirmButton: false
+    })
+    // Recargar datos del cliente
+    const res = await get(`/coach/clientes/${props.cliente.id}`)
+    const clienteActualizado = res.datos ?? res.data ?? res
+    emit('cliente-actualizado', clienteActualizado)
+  } catch (e) {
+    await Swal.fire({
+      title: 'Error',
+      text: e.message || 'No se pudo desactivar el cliente.',
+      icon: 'error',
+      confirmButtonColor: '#00D261'
+    })
+    // Recargar para revertir el cambio visual del switch
+    const res = await get(`/coach/clientes/${props.cliente.id}`)
+    const clienteActualizado = res.datos ?? res.data ?? res
+    emit('cliente-actualizado', clienteActualizado)
+  } finally {
+    procesandoActivo.value = false
+  }
+}
+
+async function toggleClienteActivo() {
+  if (props.cliente?.activo) {
+    await desactivarCliente()
+  } else {
+    await activarCliente()
   }
 }
 
@@ -287,6 +389,82 @@ async function quitarDieta(dieta) {
     })
   }
 }
+
+function abrirParametros() {
+  if (!props.cliente) return
+  emit('close')
+  router.push({ name: 'CoachParametrosCliente', params: { id: props.cliente.id } })
+}
+
+async function abrirFormulario() {
+  if (!props.cliente) return
+  
+  try {
+    // Cargar formularios disponibles
+    const response = await get('/coach/formularios')
+    formulariosDisponibles.value = response.datos || []
+    
+    if (formulariosDisponibles.value.length === 0) {
+      await Swal.fire({
+        title: 'Sin formularios',
+        text: 'No hay formularios disponibles. Crea un formulario primero.',
+        icon: 'info',
+        confirmButtonColor: '#00D261'
+      })
+      return
+    }
+    
+    // Si solo hay uno, abrirlo directamente
+    if (formulariosDisponibles.value.length === 1) {
+      formularioParaCliente.value = formulariosDisponibles.value[0]
+      showFormularioClienteModal.value = true
+      return
+    }
+    
+    // Si hay varios, mostrar selector con SweetAlert
+    const { value: seleccion } = await Swal.fire({
+      title: 'Seleccionar formulario',
+      input: 'select',
+      inputOptions: formulariosDisponibles.value.reduce((acc, f, i) => {
+        acc[i] = f.nombre
+        return acc
+      }, {}),
+      inputPlaceholder: 'Selecciona un formulario',
+      showCancelButton: true,
+      confirmButtonText: 'Abrir',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#00D261',
+      cancelButtonColor: '#666'
+    })
+    
+    if (seleccion !== undefined) {
+      formularioParaCliente.value = formulariosDisponibles.value[seleccion]
+      showFormularioClienteModal.value = true
+    }
+  } catch (err) {
+    await Swal.fire({
+      title: 'Error',
+      text: err.response?.data?.mensaje || 'Error al cargar formularios',
+      icon: 'error',
+      confirmButtonColor: '#00D261'
+    })
+  }
+}
+
+function cerrarFormularioClienteModal() {
+  showFormularioClienteModal.value = false
+  formularioParaCliente.value = null
+}
+
+async function onFormularioCompletado() {
+  cerrarFormularioClienteModal()
+  // Recargar datos del cliente
+  if (props.cliente) {
+    const res = await get(`/coach/clientes/${props.cliente.id}`)
+    const clienteActualizado = res.datos ?? res.data ?? res
+    emit('cliente-actualizado', clienteActualizado)
+  }
+}
 </script>
 
 <template>
@@ -330,12 +508,19 @@ async function quitarDieta(dieta) {
           </div>
           <div class="cliente-modal__row">
             <span class="cliente-modal__label">Estado</span>
-            <span
-              class="cliente-modal__badge"
-              :class="{ 'cliente-modal__badge--active': cliente.activo }"
-            >
-              {{ cliente.activo ? 'Activo' : 'Inactivo' }}
-            </span>
+            <div class="cliente-modal__estado-actions">
+              <span
+                class="cliente-modal__badge"
+                :class="{ 'cliente-modal__badge--active': cliente.activo }"
+              >
+                {{ cliente.activo ? 'Activo' : 'Inactivo' }}
+              </span>
+              <BaseSwitch
+                :model-value="cliente.activo"
+                :loading="procesandoActivo"
+                @update:model-value="toggleClienteActivo()"
+              />
+            </div>
           </div>
           <div class="cliente-modal__row" v-if="cliente.edad != null">
             <span class="cliente-modal__label">Edad</span>
@@ -491,6 +676,50 @@ async function quitarDieta(dieta) {
               <p class="cliente-modal__empty-text">No hay archivos de dieta</p>
             </div>
           </div>
+
+          <!-- Sección Parámetros -->
+          <div class="cliente-modal__section">
+            <div class="cliente-modal__section-header">
+              <h3 class="cliente-modal__section-title">Parámetros</h3>
+              <button
+                type="button"
+                class="cliente-modal__section-btn cliente-modal__section-btn--primary"
+                @click="abrirParametros"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <span>Ver parámetros</span>
+              </button>
+            </div>
+            <div class="cliente-modal__empty-state">
+              <p class="cliente-modal__empty-text">Gestiona los parámetros del cliente</p>
+            </div>
+          </div>
+
+          <!-- Sección Formularios -->
+          <div class="cliente-modal__section">
+            <div class="cliente-modal__section-header">
+              <h3 class="cliente-modal__section-title">Formularios</h3>
+              <button
+                type="button"
+                class="cliente-modal__section-btn cliente-modal__section-btn--primary"
+                @click="abrirFormulario"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                <span>Llenar formulario</span>
+              </button>
+            </div>
+            <div class="cliente-modal__empty-state">
+              <p class="cliente-modal__empty-text">Llena formularios por el cliente</p>
+            </div>
+          </div>
         </div>
 
         <div class="cliente-modal__footer">
@@ -549,6 +778,15 @@ async function quitarDieta(dieta) {
       :cliente="cliente"
       @close="cerrarAsignarRutinaClienteModal"
       @asignada="onRutinaAsignada"
+    />
+
+    <!-- Modal Formulario Cliente -->
+    <FormularioClienteModal
+      v-if="showFormularioClienteModal && cliente && formularioParaCliente"
+      :cliente="cliente"
+      :formulario="formularioParaCliente"
+      @close="cerrarFormularioClienteModal"
+      @completado="onFormularioCompletado"
     />
   </Teleport>
 </template>
@@ -720,6 +958,12 @@ async function quitarDieta(dieta) {
 .cliente-modal__badge--active {
   background: rgba(0, 210, 97, 0.15);
   color: #00D261;
+}
+
+.cliente-modal__estado-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .cliente-modal__footer {
