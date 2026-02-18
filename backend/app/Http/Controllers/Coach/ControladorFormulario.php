@@ -206,4 +206,56 @@ class ControladorFormulario extends Controller
             ],
         ], 201);
     }
+
+    /**
+     * Obtener las respuestas del formulario estándar de un cliente específico.
+     */
+    public function respuestasCliente(Request $request, int $cliente): JsonResponse
+    {
+        $coach = $this->getCoach($request);
+
+        // Verificar que el cliente pertenezca al coach
+        $clienteModel = Cliente::where('creado_por', $coach->id)
+            ->findOrFail($cliente);
+
+        // Cargar relación del formulario inicial
+        $coach->load('formularioInicial');
+
+        // Usar el formulario estándar del coach
+        if (!$coach->tieneFormularioInicial() || !$coach->formularioInicial) {
+            return response()->json([
+                'mensaje' => 'No tienes un formulario estándar configurado.',
+            ], 400);
+        }
+
+        $formularioEstandar = $coach->formularioInicial;
+
+        // Obtener las respuestas del cliente para este formulario
+        $respuesta = FormularioRespuesta::with('formulario')
+            ->where('formulario_id', $formularioEstandar->id)
+            ->where('cliente_id', $clienteModel->id)
+            ->first();
+
+        if (!$respuesta) {
+            return response()->json([
+                'mensaje' => 'El cliente no ha contestado este formulario.',
+            ], 404);
+        }
+
+        // preguntas es un campo JSON, no una relación
+        return response()->json([
+            'datos' => [
+                'formulario' => [
+                    'id' => $formularioEstandar->id,
+                    'nombre' => $formularioEstandar->nombre,
+                    'preguntas' => $formularioEstandar->preguntas ?? [],
+                ],
+                'respuesta' => [
+                    'id' => $respuesta->id,
+                    'fecha' => $respuesta->fecha->format('Y-m-d H:i:s'),
+                    'respuestas' => $respuesta->respuestas ?? [],
+                ],
+            ],
+        ]);
+    }
 }

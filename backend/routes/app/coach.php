@@ -305,6 +305,9 @@ Route::prefix('coach')
         ->name('coach.formularios.respuestas');
     
     // Formulario estándar por cliente (coach)
+    Route::get('/clientes/{cliente}/formulario-estandar/respuestas', [ControladorFormulario::class, 'respuestasCliente'])
+        ->name('coach.clientes.formulario-estandar.respuestas');
+    
     Route::post('/clientes/{cliente}/formulario-estandar/responder', [ControladorFormulario::class, 'responderPorCliente'])
         ->name('coach.clientes.formulario-estandar.responder');
 

@@ -10,6 +10,7 @@ class ParametroCliente extends ModeloBase
 
     protected $fillable = [
         'cliente_id',
+        'evaluacion_id',
         'parametro_id',
         'valor',
         'fecha',
@@ -37,6 +38,11 @@ class ParametroCliente extends ModeloBase
     public function parametro(): BelongsTo
     {
         return $this->belongsTo(Parametro::class);
+    }
+
+    public function evaluacion(): BelongsTo
+    {
+        return $this->belongsTo(Evaluacion::class);
     }
 
     /*
