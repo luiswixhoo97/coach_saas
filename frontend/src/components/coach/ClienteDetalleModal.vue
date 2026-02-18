@@ -649,6 +649,7 @@ async function onFormularioCompletado() {
             <div class="cliente-modal__section-header">
               <h3 class="cliente-modal__section-title">Formularios</h3>
               <button
+                v-if="!cliente?.formulario_completado"
                 type="button"
                 class="cliente-modal__section-btn cliente-modal__section-btn--primary"
                 @click="abrirFormulario"
@@ -661,6 +662,18 @@ async function onFormularioCompletado() {
                   <polyline points="10 9 9 9 8 9"/>
                 </svg>
                 <span>Llenar formulario</span>
+              </button>
+              <button
+                v-else
+                type="button"
+                class="cliente-modal__section-btn cliente-modal__section-btn--view"
+                @click="abrirFormulario"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span>Ver respuestas</span>
               </button>
             </div>
             <div class="cliente-modal__empty-state">
@@ -731,6 +744,7 @@ async function onFormularioCompletado() {
         <FormularioClienteModal
           v-if="showFormularioClienteModal && cliente"
           :cliente="cliente"
+          :modo-ver="cliente?.formulario_completado ?? false"
           @close="cerrarFormularioClienteModal"
           @completado="onFormularioCompletado"
         />
@@ -1016,6 +1030,17 @@ async function onFormularioCompletado() {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
+}
+
+.cliente-modal__section-btn--view {
+  background: rgba(0, 210, 97, 0.1);
+  border: 1px solid rgba(0, 210, 97, 0.3);
+  color: #00D261;
+}
+
+.cliente-modal__section-btn--view:hover {
+  background: rgba(0, 210, 97, 0.2);
+  border-color: #00D261;
 }
 
 .cliente-modal__rutinas,

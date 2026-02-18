@@ -75,7 +75,7 @@ function actualizarRespuestaMultiple(index, opcion, checked) {
     >
       <label class="formulario-dinamico__label">
         {{ pregunta.texto }}
-        <span class="text-danger-500">*</span>
+        <span class="formulario-dinamico__required">*</span>
       </label>
 
       <!-- Tipo: Texto -->
@@ -156,6 +156,11 @@ function actualizarRespuestaMultiple(index, opcion, checked) {
   font-weight: 500;
   color: #a0a0a0;
   margin-bottom: 0.5rem;
+}
+
+.formulario-dinamico__required {
+  color: #EF5C5C;
+  margin-left: 0.125rem;
 }
 
 .formulario-dinamico__input,

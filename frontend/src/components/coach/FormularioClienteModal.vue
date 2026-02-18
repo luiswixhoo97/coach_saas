@@ -7,6 +7,10 @@ const props = defineProps({
   cliente: {
     type: Object,
     required: true
+  },
+  modoVer: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -16,12 +20,17 @@ const { get, post, cargando } = useApi()
 
 const formularioCompleto = ref(null)
 const respuestas = ref({})
+const respuestaCliente = ref(null)
 const enviando = ref(false)
 const error = ref('')
 const cargandoFormulario = ref(false)
 
 onMounted(async () => {
-  await cargarFormularioEstandar()
+  if (props.modoVer) {
+    await cargarRespuestasCliente()
+  } else {
+    await cargarFormularioEstandar()
+  }
 })
 
 async function cargarFormularioEstandar() {
@@ -47,6 +56,40 @@ async function cargarFormularioEstandar() {
     respuestas.value = {}
   } catch (err) {
     error.value = err.response?.data?.mensaje || 'Error al cargar formulario estándar'
+  } finally {
+    cargandoFormulario.value = false
+  }
+}
+
+async function cargarRespuestasCliente() {
+  try {
+    cargandoFormulario.value = true
+    error.value = ''
+    
+    const response = await get(`/coach/clientes/${props.cliente.id}/formulario-estandar/respuestas`)
+    formularioCompleto.value = {
+      id: response.datos.formulario.id,
+      nombre: response.datos.formulario.nombre,
+      preguntas: response.datos.formulario.preguntas
+    }
+    respuestaCliente.value = response.datos.respuesta
+    
+    // Convertir array de respuestas a objeto indexado para mostrar
+    if (response.datos.respuesta.respuestas && Array.isArray(response.datos.respuesta.respuestas)) {
+      const respuestasObj = {}
+      response.datos.respuesta.respuestas.forEach((respuesta, index) => {
+        respuestasObj[index] = respuesta
+      })
+      respuestas.value = respuestasObj
+    } else {
+      respuestas.value = {}
+    }
+  } catch (err) {
+    if (err.response?.status === 404) {
+      error.value = 'El cliente no ha contestado este formulario.'
+    } else {
+      error.value = err.response?.data?.mensaje || 'Error al cargar respuestas del formulario'
+    }
   } finally {
     cargandoFormulario.value = false
   }
@@ -88,6 +131,18 @@ async function enviarFormulario() {
 function cerrar() {
   emit('close')
 }
+
+function formatearFecha(fecha) {
+  if (!fecha) return ''
+  const fechaObj = new Date(fecha)
+  return fechaObj.toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 </script>
 
 <template>
@@ -122,14 +177,42 @@ function cerrar() {
             {{ error }}
           </div>
 
-          <form v-else-if="formularioCompleto?.preguntas" @submit.prevent="enviarFormulario" class="formulario-cliente-modal__form">
+          <div v-else-if="formularioCompleto?.preguntas" class="formulario-cliente-modal__form">
             <div class="formulario-cliente-modal__info">
               <p class="formulario-cliente-modal__info-text">
-                Llenando formulario para: <strong>{{ cliente.nombre }} {{ cliente.apellido_paterno }}</strong>
+                <span v-if="modoVer">Respuestas de: <strong>{{ cliente.nombre }} {{ cliente.apellido_paterno }}</strong></span>
+                <span v-else>Llenando formulario para: <strong>{{ cliente.nombre }} {{ cliente.apellido_paterno }}</strong></span>
+              </p>
+              <p v-if="modoVer && respuestaCliente" class="formulario-cliente-modal__info-text" style="margin-top: 0.5rem; font-size: 0.8125rem;">
+                Fecha: <strong>{{ formatearFecha(respuestaCliente.fecha) }}</strong>
               </p>
             </div>
 
+            <div v-if="modoVer" class="formulario-cliente-modal__respuestas">
+              <div
+                v-for="(pregunta, index) in formularioCompleto.preguntas"
+                :key="index"
+                class="formulario-cliente-modal__respuesta-item"
+              >
+                <label class="formulario-cliente-modal__respuesta-label">
+                  {{ pregunta.texto }}
+                </label>
+                <div class="formulario-cliente-modal__respuesta-valor">
+                  <span v-if="respuestas[index] === null || respuestas[index] === undefined || respuestas[index] === ''" class="formulario-cliente-modal__respuesta-vacia">
+                    Sin respuesta
+                  </span>
+                  <span v-else-if="Array.isArray(respuestas[index])" class="formulario-cliente-modal__respuesta-multiple">
+                    {{ respuestas[index].join(', ') }}
+                  </span>
+                  <span v-else>
+                    {{ respuestas[index] }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <FormularioDinamico
+              v-else
               :preguntas="formularioCompleto.preguntas"
               v-model="respuestas"
             />
@@ -137,28 +220,38 @@ function cerrar() {
             <div v-if="error" class="formulario-cliente-modal__error-message">
               {{ error }}
             </div>
-          </form>
+          </div>
         </div>
 
         <!-- Footer -->
         <div v-if="!cargandoFormulario && !error && formularioCompleto?.preguntas" class="formulario-cliente-modal__footer">
           <button
+            v-if="modoVer"
             type="button"
-            class="formulario-cliente-modal__btn formulario-cliente-modal__btn--danger"
-            @click="cerrar"
-            :disabled="enviando"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
             class="formulario-cliente-modal__btn formulario-cliente-modal__btn--primary"
-            @click="enviarFormulario"
-            :disabled="enviando"
+            @click="cerrar"
           >
-            <span v-if="enviando" class="formulario-cliente-modal__btn-spinner"></span>
-            <span v-else>Guardar</span>
+            Cerrar
           </button>
+          <template v-else>
+            <button
+              type="button"
+              class="formulario-cliente-modal__btn formulario-cliente-modal__btn--danger"
+              @click="cerrar"
+              :disabled="enviando"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              class="formulario-cliente-modal__btn formulario-cliente-modal__btn--primary"
+              @click="enviarFormulario"
+              :disabled="enviando"
+            >
+              <span v-if="enviando" class="formulario-cliente-modal__btn-spinner"></span>
+              <span v-else>Guardar</span>
+            </button>
+          </template>
         </div>
       </div>
     </div>
@@ -467,6 +560,48 @@ function cerrar() {
   padding: 2rem 1rem;
   color: #9CA3AF;
   font-size: 0.875rem;
+}
+
+/* Respuestas (modo ver) */
+.formulario-cliente-modal__respuestas {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formulario-cliente-modal__respuesta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #1e1e1e;
+  border: 1px solid #252525;
+  border-radius: 12px;
+}
+
+.formulario-cliente-modal__respuesta-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #a0a0a0;
+  margin: 0;
+}
+
+.formulario-cliente-modal__respuesta-valor {
+  font-size: 0.875rem;
+  color: #fff;
+  padding: 0.75rem;
+  background: #161616;
+  border-radius: 8px;
+  border: 1px solid #252525;
+}
+
+.formulario-cliente-modal__respuesta-vacia {
+  color: #697586;
+  font-style: italic;
+}
+
+.formulario-cliente-modal__respuesta-multiple {
+  display: inline-block;
 }
 </style>
 

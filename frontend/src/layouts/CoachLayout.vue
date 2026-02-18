@@ -83,20 +83,20 @@ const showTopbar = computed(() => {
         </div>
         <nav class="coach-layout__sidebar-nav">
           <RouterLink
-            :to="{ name: 'CoachDashboard' }"
+            :to="{ name: 'CoachPerfil' }"
             class="coach-layout__sidebar-link"
-            :class="{ 'coach-layout__sidebar-link--active': isActive('CoachDashboard') }"
+            :class="{ 'coach-layout__sidebar-link--active': isActive('CoachPerfil') }"
             @click="closeSidebar"
           >
             <div class="coach-layout__sidebar-link-bg"></div>
             <div class="coach-layout__sidebar-link-indicator"></div>
             <div class="coach-layout__sidebar-icon-wrapper">
               <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
               </svg>
             </div>
-            <span class="coach-layout__sidebar-link-text">Dashboard</span>
+            <span class="coach-layout__sidebar-link-text">Perfil</span>
           </RouterLink>
           <RouterLink
             :to="{ name: 'CoachUsuarios' }"
@@ -191,22 +191,6 @@ const showTopbar = computed(() => {
             </div>
             <span class="coach-layout__sidebar-link-text">Parámetros</span>
           </RouterLink>
-          <RouterLink
-            :to="{ name: 'CoachPerfil' }"
-            class="coach-layout__sidebar-link"
-            :class="{ 'coach-layout__sidebar-link--active': isActive('CoachPerfil') }"
-            @click="closeSidebar"
-          >
-            <div class="coach-layout__sidebar-link-bg"></div>
-            <div class="coach-layout__sidebar-link-indicator"></div>
-            <div class="coach-layout__sidebar-icon-wrapper">
-              <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-            </div>
-            <span class="coach-layout__sidebar-link-text">Perfil</span>
-          </RouterLink>
         </nav>
       </div>
     </aside>
@@ -245,15 +229,15 @@ const showTopbar = computed(() => {
       <template #bottom-nav>
         <div class="coach-layout__bottom-nav">
           <RouterLink
-            :to="{ name: 'CoachDashboard' }"
+            :to="{ name: 'CoachPerfil' }"
             class="coach-layout__nav-item"
-            :class="{ 'coach-layout__nav-item--active': isActive('CoachDashboard') }"
+            :class="{ 'coach-layout__nav-item--active': isActive('CoachPerfil') }"
           >
             <svg class="coach-layout__nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
             </svg>
-            <span class="coach-layout__nav-label">Dashboard</span>
+            <span class="coach-layout__nav-label">Perfil</span>
           </RouterLink>
           <RouterLink
             :to="{ name: 'CoachUsuarios' }"
@@ -291,7 +275,7 @@ const showTopbar = computed(() => {
             <button
               type="button"
               class="coach-layout__nav-item coach-layout__nav-item--config"
-              :class="{ 'coach-layout__nav-item--active': isActive('CoachFormularios') || isActive('CoachParametros') || isActive('CoachEjercicios') || isActive('CoachPerfil') }"
+              :class="{ 'coach-layout__nav-item--active': isActive('CoachFormularios') || isActive('CoachParametros') || isActive('CoachEjercicios') }"
               @click="toggleConfigSubmenu"
             >
               <svg class="coach-layout__nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -335,18 +319,6 @@ const showTopbar = computed(() => {
                     <path d="M12 8v8M8 12h8"/>
                   </svg>
                   <span>Ejercicios</span>
-          </RouterLink>
-          <RouterLink
-            :to="{ name: 'CoachPerfil' }"
-                  class="coach-layout__submenu-item"
-                  :class="{ 'coach-layout__submenu-item--active': isActive('CoachPerfil') }"
-                  @click="closeConfigSubmenu"
-          >
-                  <svg class="coach-layout__submenu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-                  <span>Perfil</span>
           </RouterLink>
               </div>
             </Transition>

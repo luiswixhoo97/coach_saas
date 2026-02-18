@@ -151,11 +151,11 @@ router.beforeEach((to, from, next) => {
 
   // Ruta requiere ser invitado (no autenticado)
   if (requiresGuest && authStore.autenticado) {
-    // Redirigir según el rol
+    // Redirigir según el rol al perfil
     if (authStore.esCoach) {
-      next({ name: 'CoachDashboard' })
+      next({ name: 'CoachPerfil' })
     } else if (authStore.esCliente) {
-      next({ name: 'ClienteDashboard' })
+      next({ name: 'ClientePerfil' })
     } else {
       next({ name: 'Home' })
     }

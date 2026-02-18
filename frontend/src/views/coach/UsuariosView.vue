@@ -251,6 +251,10 @@ function abrirFormulario(c) {
   showFormularioClienteModal.value = true
 }
 
+const modoVerFormulario = computed(() => {
+  return clienteParaAsignar.value?.formulario_completado ?? false
+})
+
 function cerrarFormularioClienteModal() {
   showFormularioClienteModal.value = false
   clienteParaAsignar.value = null
@@ -472,11 +476,16 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
                         title="Parámetros"
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
-                          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                          <circle cx="9" cy="7" r="3"/>
+                          <path d="M6 2v10"/>
+                          <circle cx="15" cy="17" r="3"/>
+                          <path d="M18 12v10"/>
+                          <line x1="3" y1="3" x2="21" y2="21"/>
                         </svg>
                         Parámetros
                       </button>
                       <button
+                        v-if="!c?.formulario_completado"
                         type="button"
                         class="usuarios__accion-btn usuarios__accion-btn--primary"
                         @click="abrirFormulario(c)"
@@ -489,7 +498,20 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
                           <line x1="16" y1="17" x2="8" y2="17"/>
                           <polyline points="10 9 9 9 8 9"/>
                         </svg>
-                        Formulario
+                        Llenar
+                      </button>
+                      <button
+                        v-else
+                        type="button"
+                        class="usuarios__accion-btn usuarios__accion-btn--primary"
+                        @click="abrirFormulario(c)"
+                        title="Ver respuestas del formulario"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                          <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        Ver
                       </button>
                     </div>
                   </td>
@@ -593,6 +615,7 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
         <FormularioClienteModal
           v-if="showFormularioClienteModal && clienteParaAsignar"
           :cliente="clienteParaAsignar"
+          :modo-ver="modoVerFormulario"
           @close="cerrarFormularioClienteModal"
           @completado="onFormularioCompletado"
         />
@@ -1215,5 +1238,17 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
 .usuarios__accion-btn--danger:hover {
   background: rgba(239, 92, 92, 0.2);
   border-color: #EF5C5C;
+}
+
+.usuarios__accion-btn--secondary {
+  background: rgba(0, 210, 97, 0.1);
+  color: #00D261;
+  border: 1px solid rgba(0, 210, 97, 0.3);
+}
+
+.usuarios__accion-btn--secondary:hover {
+  background: rgba(0, 210, 97, 0.2);
+  border-color: #00D261;
+  transform: translateY(-1px);
 }
 </style>

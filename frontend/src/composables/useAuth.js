@@ -102,10 +102,10 @@ export function useAuth() {
         router.push('/admin')
         break
       case 'coach':
-        router.push('/coach')
+        router.push({ name: 'CoachPerfil' })
         break
       case 'cliente':
-        router.push('/cliente')
+        router.push({ name: 'ClientePerfil' })
         break
       default:
         router.push('/')

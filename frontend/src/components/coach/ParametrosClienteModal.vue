@@ -20,7 +20,14 @@ const cargandoParametros = ref(false)
 // Formulario - un objeto con todos los parámetros
 const valoresParametros = ref({}) // { parametro_id: { valor: '', notas: '' } }
 const guardando = ref(false)
-const mostrarFormulario = ref(true) // Mostrar formulario por defecto
+const mostrarFormulario = ref(false) // No mostrar formulario por defecto
+
+// Estado de vista actual: 'menu' | 'historial' | 'formulario'
+const vistaActual = ref('menu')
+
+// Historial de parámetros
+const historialParametros = ref([])
+const cargandoHistorial = ref(false)
 
 onMounted(async () => {
   await cargarParametrosDisponibles()
@@ -58,16 +65,45 @@ async function cargarParametrosDisponibles() {
 }
 
 
-function abrirFormulario() {
+async function cargarHistorial() {
+  try {
+    cargandoHistorial.value = true
+    error.value = ''
+    const response = await get(`/coach/clientes/${props.cliente.id}/parametros`)
+    historialParametros.value = response.datos || []
+  } catch (err) {
+    error.value = err.response?.data?.mensaje || 'Error al cargar historial de parámetros'
+  } finally {
+    cargandoHistorial.value = false
+  }
+}
+
+function irAMenu() {
+  vistaActual.value = 'menu'
+  error.value = ''
+}
+
+function irAHistorial() {
+  vistaActual.value = 'historial'
+  error.value = ''
+  cargarHistorial()
+}
+
+function irAFormulario() {
+  vistaActual.value = 'formulario'
   mostrarFormulario.value = true
   error.value = ''
   inicializarValores()
 }
 
+function abrirFormulario() {
+  irAFormulario()
+}
+
 function cerrarFormulario() {
+  irAMenu()
   mostrarFormulario.value = false
   inicializarValores()
-  error.value = ''
 }
 
 async function guardarParametros() {
@@ -100,7 +136,9 @@ async function guardarParametros() {
 
     await Promise.all(promesas)
 
-    cerrarFormulario()
+    irAMenu()
+    mostrarFormulario.value = false
+    inicializarValores()
     emit('guardado')
   } catch (err) {
     error.value = err.response?.data?.mensaje || 'Error al guardar parámetros'
@@ -114,6 +152,36 @@ function nombreCompleto() {
   if (!props.cliente) return ''
   const partes = [props.cliente.nombre, props.cliente.apellido_paterno, props.cliente.apellido_materno].filter(Boolean)
   return partes.join(' ') || 'Cliente'
+}
+
+// Agrupar parámetros por fecha
+const parametrosAgrupados = computed(() => {
+  const grupos = {}
+  historialParametros.value.forEach(parametro => {
+    const fecha = parametro.fecha
+    if (!grupos[fecha]) {
+      grupos[fecha] = []
+    }
+    grupos[fecha].push(parametro)
+  })
+  
+  // Convertir a array y ordenar por fecha descendente
+  return Object.entries(grupos)
+    .sort((a, b) => new Date(b[0]) - new Date(a[0]))
+    .map(([fecha, parametros]) => ({
+      fecha,
+      parametros
+    }))
+})
+
+function formatearFecha(fecha) {
+  if (!fecha) return ''
+  const fechaObj = new Date(fecha)
+  return fechaObj.toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
 }
 </script>
 
@@ -140,8 +208,115 @@ function nombreCompleto() {
 
         <!-- Body -->
         <div class="parametros-cliente-modal__body">
+          <!-- Menú inicial -->
+          <div v-if="vistaActual === 'menu'" class="parametros-cliente-modal__menu">
+            <div class="parametros-cliente-modal__menu-buttons">
+              <button
+                type="button"
+                class="parametros-cliente-modal__menu-btn parametros-cliente-modal__menu-btn--historial"
+                @click="irAHistorial"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 3h18v18H3z"/>
+                  <path d="M3 9h18M9 3v18"/>
+                </svg>
+                <span class="parametros-cliente-modal__menu-btn-text">Ver historial</span>
+                <span class="parametros-cliente-modal__menu-btn-desc">Consulta todos los parámetros registrados</span>
+              </button>
+              
+              <button
+                type="button"
+                class="parametros-cliente-modal__menu-btn parametros-cliente-modal__menu-btn--agregar"
+                @click="irAFormulario"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                <span class="parametros-cliente-modal__menu-btn-text">Agregar nuevos</span>
+                <span class="parametros-cliente-modal__menu-btn-desc">Registra nuevos valores de parámetros</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Vista de historial -->
+          <div v-else-if="vistaActual === 'historial'" class="parametros-cliente-modal__historial-section">
+            <div class="parametros-cliente-modal__historial-header">
+              <h3 class="parametros-cliente-modal__historial-title">Historial de Parámetros</h3>
+              <button
+                type="button"
+                class="parametros-cliente-modal__historial-btn-agregar"
+                @click="irAFormulario"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Agregar nuevos
+              </button>
+            </div>
+
+            <div v-if="cargandoHistorial" class="parametros-cliente-modal__loading">
+              <div class="parametros-cliente-modal__skeleton" />
+              <div class="parametros-cliente-modal__skeleton" />
+            </div>
+
+            <div v-else-if="error" class="parametros-cliente-modal__error">
+              {{ error }}
+            </div>
+
+            <div v-else-if="parametrosAgrupados.length === 0" class="parametros-cliente-modal__empty">
+              <p class="parametros-cliente-modal__empty-text">
+                No hay parámetros registrados para este cliente.
+              </p>
+            </div>
+
+            <div v-else class="parametros-cliente-modal__historial-grupos">
+              <div
+                v-for="grupo in parametrosAgrupados"
+                :key="grupo.fecha"
+                class="parametros-cliente-modal__grupo"
+              >
+                <h4 class="parametros-cliente-modal__grupo-fecha">
+                  {{ formatearFecha(grupo.fecha) }}
+                </h4>
+                <div class="parametros-cliente-modal__grupo-items">
+                  <div
+                    v-for="parametro in grupo.parametros"
+                    :key="parametro.id"
+                    class="parametros-cliente-modal__item"
+                  >
+                    <div class="parametros-cliente-modal__item-content">
+                      <div class="parametros-cliente-modal__item-info">
+                        <span class="parametros-cliente-modal__item-nombre">
+                          {{ parametro.parametro?.nombre || 'Parámetro' }}:
+                        </span>
+                        <span class="parametros-cliente-modal__item-valor">
+                          {{ parametro.valor }} {{ parametro.parametro?.unidad_medida || '' }}
+                        </span>
+                      </div>
+                      <p v-if="parametro.notas" class="parametros-cliente-modal__item-notas">
+                        {{ parametro.notas }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="parametros-cliente-modal__historial-actions">
+              <button
+                type="button"
+                class="parametros-cliente-modal__btn parametros-cliente-modal__btn--secondary"
+                @click="irAMenu"
+              >
+                Volver
+              </button>
+            </div>
+          </div>
+
           <!-- Formulario para agregar parámetros -->
-          <div v-if="mostrarFormulario" class="parametros-cliente-modal__form-section">
+          <div v-else-if="vistaActual === 'formulario' && mostrarFormulario" class="parametros-cliente-modal__form-section">
             <div class="parametros-cliente-modal__form-header">
               <h3 class="parametros-cliente-modal__form-title">
                 Agregar Parámetros
@@ -222,7 +397,7 @@ function nombreCompleto() {
                 <button
                   type="button"
                   class="parametros-cliente-modal__btn parametros-cliente-modal__btn--secondary"
-                  @click="cerrarFormulario"
+                  @click="irAMenu"
                   :disabled="guardando"
                 >
                   Cancelar
@@ -803,6 +978,141 @@ function nombreCompleto() {
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+/* Menú inicial */
+.parametros-cliente-modal__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.parametros-cliente-modal__menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.parametros-cliente-modal__menu-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem 1.5rem;
+  background: #1a1a1a;
+  border: 2px solid #252525;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  min-height: 140px;
+}
+
+.parametros-cliente-modal__menu-btn:hover {
+  background: #252525;
+  border-color: #00D261;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 210, 97, 0.2);
+}
+
+.parametros-cliente-modal__menu-btn svg {
+  width: 48px;
+  height: 48px;
+  color: #00D261;
+  flex-shrink: 0;
+}
+
+.parametros-cliente-modal__menu-btn-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+}
+
+.parametros-cliente-modal__menu-btn-desc {
+  font-size: 0.8125rem;
+  color: #9CA3AF;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.parametros-cliente-modal__menu-btn--historial {
+  border-color: rgba(0, 210, 97, 0.3);
+}
+
+.parametros-cliente-modal__menu-btn--historial:hover {
+  border-color: #00D261;
+  background: rgba(0, 210, 97, 0.05);
+}
+
+.parametros-cliente-modal__menu-btn--agregar {
+  border-color: rgba(0, 210, 97, 0.3);
+}
+
+.parametros-cliente-modal__menu-btn--agregar:hover {
+  border-color: #00D261;
+  background: rgba(0, 210, 97, 0.05);
+}
+
+/* Vista de historial */
+.parametros-cliente-modal__historial-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.parametros-cliente-modal__historial-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #252525;
+}
+
+.parametros-cliente-modal__historial-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+
+.parametros-cliente-modal__historial-btn-agregar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 210, 97, 0.1);
+  border: 1px solid rgba(0, 210, 97, 0.3);
+  border-radius: 8px;
+  color: #00D261;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.parametros-cliente-modal__historial-btn-agregar:hover {
+  background: rgba(0, 210, 97, 0.2);
+  border-color: #00D261;
+}
+
+.parametros-cliente-modal__historial-btn-agregar svg {
+  width: 16px;
+  height: 16px;
+}
+
+.parametros-cliente-modal__historial-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #252525;
+}
+
+.parametros-cliente-modal__historial-actions .parametros-cliente-modal__btn {
+  flex: 1;
 }
 </style>
 
