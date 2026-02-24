@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Coach\ActualizarClienteRequest;
 use App\Http\Requests\Coach\AlmacenarClienteRequest;
 use App\Http\Resources\ClienteResource;
+use App\Http\Resources\EvaluacionResource;
 use App\Http\Resources\PaginacionCollection;
 use App\Models\Cliente;
 use App\Models\User;
@@ -119,6 +120,27 @@ class ControladorCliente extends Controller
 
         return response()->json([
             'datos' => new ClienteResource($cliente),
+        ]);
+    }
+
+    /**
+     * Listar evaluaciones (citas) del cliente.
+     */
+    public function evaluaciones(Request $request, int $id): JsonResponse
+    {
+        $coach = $this->getCoach($request);
+
+        $cliente = Cliente::where('creado_por', $coach->id)->findOrFail($id);
+
+        $evaluaciones = $cliente->suscripciones()
+            ->with(['evaluaciones.ubicacion', 'evaluaciones.parametrosEvaluacion.parametro'])
+            ->get()
+            ->flatMap(fn($s) => $s->evaluaciones)
+            ->sortByDesc('fecha')
+            ->values();
+
+        return response()->json([
+            'datos' => EvaluacionResource::collection($evaluaciones),
         ]);
     }
 

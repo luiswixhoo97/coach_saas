@@ -77,6 +77,9 @@ Route::prefix('coach')
     Route::get('/clientes/{id}/progreso', [ControladorCliente::class, 'progreso'])
         ->name('coach.clientes.progreso');
     
+    Route::get('/clientes/{id}/evaluaciones', [ControladorCliente::class, 'evaluaciones'])
+        ->name('coach.clientes.evaluaciones');
+    
     Route::put('/clientes/{id}/activar', [ControladorCliente::class, 'activar'])
         ->name('coach.clientes.activar');
     

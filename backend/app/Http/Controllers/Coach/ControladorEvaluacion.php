@@ -8,6 +8,7 @@ use App\Http\Resources\EvaluacionResource;
 use App\Http\Resources\PaginacionCollection;
 use App\Models\Evaluacion;
 use App\Models\FotoEvaluacion;
+use App\Models\ParametroCliente;
 use App\Models\ParametroEvaluacion;
 use App\Models\Suscripcion;
 use App\Models\Ubicacion;
@@ -178,7 +179,7 @@ class ControladorEvaluacion extends Controller
 
         $coach = $this->getCoach($request);
 
-        $evaluacion = Evaluacion::whereHas('suscripcion.plan', fn($q) => $q->where('coach_id', $coach->id))
+        $evaluacion = Evaluacion::with('suscripcion')->whereHas('suscripcion.plan', fn($q) => $q->where('coach_id', $coach->id))
             ->findOrFail($id);
 
         ParametroEvaluacion::updateOrCreate(
@@ -188,6 +189,22 @@ class ControladorEvaluacion extends Controller
                 'notas' => $request->notas,
             ]
         );
+
+        $clienteId = $evaluacion->suscripcion->cliente_id;
+        ParametroCliente::updateOrCreate(
+            [
+                'cliente_id' => $clienteId,
+                'evaluacion_id' => $evaluacion->id,
+                'parametro_id' => $request->parametro_id,
+            ],
+            [
+                'valor' => $request->valor,
+                'fecha' => $evaluacion->fecha,
+                'notas' => $request->notas,
+            ]
+        );
+
+        $evaluacion->update(['estado' => 'completada']);
 
         return response()->json(['mensaje' => 'Parámetro agregado correctamente.']);
     }
