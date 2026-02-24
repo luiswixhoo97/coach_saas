@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Cliente;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\EvaluacionResource;
 use App\Models\Evaluacion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -99,6 +100,58 @@ class ControladorEvaluacion extends Controller
 
         return response()->json([
             'datos' => array_values($progresoPorParametro),
+        ]);
+    }
+
+    /**
+     * Obtener la próxima evaluación agendada (presencial u online) con estado agendada/confirmada.
+     */
+    public function evaluacionAgendada(Request $request): JsonResponse
+    {
+        $cliente = $this->getCliente($request);
+
+        $evaluacion = Evaluacion::with(['suscripcion.cliente.usuario'])
+            ->whereHas('suscripcion', fn($q) => $q->where('cliente_id', $cliente->id))
+            ->whereIn('estado', ['agendada', 'confirmada'])
+            ->where('fecha', '>=', now()->toDateString())
+            ->orderBy('fecha', 'asc')
+            ->orderBy('hora', 'asc')
+            ->first();
+
+        if (!$evaluacion) {
+            return response()->json([
+                'mensaje' => 'No hay evaluaciones agendadas.',
+                'datos' => null,
+            ]);
+        }
+
+        return response()->json([
+            'datos' => new EvaluacionResource($evaluacion),
+        ]);
+    }
+
+    /**
+     * Confirmar evaluación agendada.
+     */
+    public function confirmar(Request $request, int $id): JsonResponse
+    {
+        $cliente = $this->getCliente($request);
+
+        $evaluacion = Evaluacion::whereHas('suscripcion', fn($q) => $q->where('cliente_id', $cliente->id))
+            ->findOrFail($id);
+
+        // Solo se puede confirmar si el estado es 'agendada'
+        if ($evaluacion->estado !== 'agendada') {
+            return response()->json([
+                'mensaje' => 'Solo se pueden confirmar evaluaciones con estado "agendada".',
+            ], 422);
+        }
+
+        $evaluacion->update(['estado' => 'confirmada']);
+
+        return response()->json([
+            'mensaje' => 'Evaluación confirmada correctamente.',
+            'datos' => new EvaluacionResource($evaluacion->load('suscripcion.cliente.usuario')),
         ]);
     }
 }

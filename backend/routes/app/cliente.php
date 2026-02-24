@@ -81,8 +81,14 @@ Route::prefix('cliente')
     Route::get('/evaluaciones', [ControladorEvaluacion::class, 'index'])
         ->name('cliente.evaluaciones.index');
     
+    Route::get('/evaluacion-agendada', [ControladorEvaluacion::class, 'evaluacionAgendada'])
+        ->name('cliente.evaluacion-agendada');
+    
     Route::get('/evaluaciones/{id}', [ControladorEvaluacion::class, 'mostrar'])
         ->name('cliente.evaluaciones.mostrar');
+    
+    Route::post('/evaluaciones/{id}/confirmar', [ControladorEvaluacion::class, 'confirmar'])
+        ->name('cliente.evaluaciones.confirmar');
     
     Route::get('/progreso', [ControladorEvaluacion::class, 'progreso'])
         ->name('cliente.progreso');

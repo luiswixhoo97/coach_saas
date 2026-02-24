@@ -7,6 +7,7 @@ use App\Http\Requests\Coach\SolicitudAlmacenarParametroCliente;
 use App\Http\Requests\Coach\SolicitudActualizarParametroCliente;
 use App\Http\Resources\ParametroClienteResource;
 use App\Models\Cliente;
+use App\Models\Evaluacion;
 use App\Models\ParametroCliente;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -47,7 +48,7 @@ class ControladorParametroCliente extends Controller
 
         // Obtener historial de parámetros ordenado por fecha descendente
         try {
-            $parametros = ParametroCliente::with('parametro')
+            $parametros = ParametroCliente::with(['parametro', 'evaluacion'])
                 ->where('cliente_id', $clienteModel->id)
                 ->orderBy('fecha', 'desc')
                 ->orderBy('created_at', 'desc')
@@ -92,6 +93,11 @@ class ControladorParametroCliente extends Controller
             $clienteModel = Cliente::where('creado_por', $coach->id)
                 ->findOrFail($cliente);
 
+            // Validar que la evaluación pertenezca al cliente
+            $evaluacion = Evaluacion::whereHas('suscripcion', function($q) use ($clienteModel) {
+                $q->where('cliente_id', $clienteModel->id);
+            })->findOrFail($request->evaluacion_id);
+
             // Verificar que el parámetro esté disponible para el coach
             $parametro = \App\Models\Parametro::where(function ($q) use ($coach) {
                 $q->where('es_predeterminado', true)
@@ -100,9 +106,10 @@ class ControladorParametroCliente extends Controller
 
             $parametroCliente = ParametroCliente::create([
                 'cliente_id' => $clienteModel->id,
+                'evaluacion_id' => $evaluacion->id, // REQUERIDO
                 'parametro_id' => $parametro->id,
                 'valor' => $request->valor,
-                'fecha' => $request->fecha ?? now()->toDateString(), // Usar fecha actual si no se proporciona
+                'fecha' => $request->fecha ?? $evaluacion->fecha, // Usar fecha de la evaluación si no se proporciona
                 'notas' => $request->notas,
             ]);
 

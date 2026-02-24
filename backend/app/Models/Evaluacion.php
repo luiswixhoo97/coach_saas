@@ -13,7 +13,10 @@ class Evaluacion extends ModeloBase
     protected $fillable = [
         'suscripcion_id',
         'fecha',
+        'hora',
+        'ubicacion_o_link',
         'modo',
+        'estado',
         'fuente',
         'notas',
     ];
@@ -39,6 +42,11 @@ class Evaluacion extends ModeloBase
     public function parametrosEvaluacion(): HasMany
     {
         return $this->hasMany(ParametroEvaluacion::class);
+    }
+
+    public function parametrosCliente(): HasMany
+    {
+        return $this->hasMany(ParametroCliente::class);
     }
 
     public function fotos(): HasMany

@@ -13,6 +13,7 @@ class ParametroEvaluacion extends ModeloBase
         'evaluacion_id',
         'parametro_id',
         'valor',
+        'notas',
     ];
 
     /*

@@ -6,6 +6,7 @@ import BaseSwitch from '@/components/ui/BaseSwitch.vue'
 import RutinaDetalleModal from '@/components/coach/RutinaDetalleModal.vue'
 import AsignarRutinaClienteModal from '@/components/coach/AsignarRutinaClienteModal.vue'
 import FormularioClienteModal from '@/components/coach/FormularioClienteModal.vue'
+import CrearEvaluacionModal from '@/components/coach/CrearEvaluacionModal.vue'
 import { useRouter } from 'vue-router'
 
 /**
@@ -40,6 +41,9 @@ const procesandoActivo = ref(false)
 
 // Estado para formularios
 const showFormularioClienteModal = ref(false)
+
+// Estado para evaluaciones
+const showCrearEvaluacionModal = ref(false)
 
 function nombreCompleto(c) {
   if (!c) return ''
@@ -412,6 +416,16 @@ async function onFormularioCompletado() {
     emit('cliente-actualizado', clienteActualizado)
   }
 }
+
+async function onEvaluacionCreada() {
+  showCrearEvaluacionModal.value = false
+  // Recargar datos del cliente si es necesario
+  if (props.cliente) {
+    const res = await get(`/coach/clientes/${props.cliente.id}`)
+    const clienteActualizado = res.datos ?? res.data ?? res
+    emit('cliente-actualizado', clienteActualizado)
+  }
+}
 </script>
 
 <template>
@@ -644,6 +658,28 @@ async function onFormularioCompletado() {
             </div>
           </div>
 
+          <!-- Sección Evaluaciones -->
+          <div class="cliente-modal__section">
+            <div class="cliente-modal__section-header">
+              <h3 class="cliente-modal__section-title">Evaluaciones</h3>
+              <button
+                type="button"
+                class="cliente-modal__section-btn cliente-modal__section-btn--primary"
+                @click="showCrearEvaluacionModal = true"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="16"/>
+                  <line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
+                <span>Agendar evaluación</span>
+              </button>
+            </div>
+            <div class="cliente-modal__empty-state">
+              <p class="cliente-modal__empty-text">Agenda evaluaciones para el cliente</p>
+            </div>
+          </div>
+
           <!-- Sección Formularios -->
           <div class="cliente-modal__section">
             <div class="cliente-modal__section-header">
@@ -748,6 +784,14 @@ async function onFormularioCompletado() {
           @close="cerrarFormularioClienteModal"
           @completado="onFormularioCompletado"
         />
+
+    <!-- Modal Crear Evaluación -->
+    <CrearEvaluacionModal
+      v-if="showCrearEvaluacionModal && cliente"
+      :cliente="cliente"
+      @close="showCrearEvaluacionModal = false"
+      @creada="onEvaluacionCreada"
+    />
   </Teleport>
 </template>
 

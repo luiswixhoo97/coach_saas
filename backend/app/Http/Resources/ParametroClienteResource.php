@@ -39,14 +39,53 @@ class ParametroClienteResource extends JsonResource
                 }
             }
 
+            $evaluacionData = null;
+            if ($this->relationLoaded('evaluacion') && $this->evaluacion) {
+                try {
+                    $evaluacionFecha = null;
+                    if ($this->evaluacion->fecha) {
+                        $evaluacionFecha = $this->evaluacion->fecha instanceof \Carbon\Carbon
+                            ? $this->evaluacion->fecha->format('Y-m-d')
+                            : (is_string($this->evaluacion->fecha) ? $this->evaluacion->fecha : null);
+                    }
+
+                    $evaluacionHora = null;
+                    if ($this->evaluacion->hora) {
+                        $evaluacionHora = $this->evaluacion->hora instanceof \Carbon\Carbon
+                            ? $this->evaluacion->hora->format('H:i')
+                            : (is_string($this->evaluacion->hora) ? $this->evaluacion->hora : null);
+                    }
+
+                    $evaluacionData = [
+                        'id' => $this->evaluacion->id ?? null,
+                        'fecha' => $evaluacionFecha,
+                        'hora' => $evaluacionHora,
+                        'modo' => $this->evaluacion->modo ?? null,
+                        'estado' => $this->evaluacion->estado ?? null,
+                        'ubicacion_o_link' => $this->evaluacion->ubicacion_o_link ?? null,
+                    ];
+                } catch (\Exception $e) {
+                    $evaluacionData = [
+                        'id' => $this->evaluacion_id ?? null,
+                        'fecha' => null,
+                        'hora' => null,
+                        'modo' => null,
+                        'estado' => null,
+                        'ubicacion_o_link' => null,
+                    ];
+                }
+            }
+
             return [
                 'id' => $this->id,
                 'cliente_id' => $this->cliente_id,
+                'evaluacion_id' => $this->evaluacion_id,
                 'parametro_id' => $this->parametro_id,
                 'valor' => $this->valor,
                 'fecha' => $fecha,
                 'notas' => $this->notas,
                 'parametro' => $parametroData,
+                'evaluacion' => $evaluacionData,
                 'created_at' => $this->created_at ? $this->created_at->format('Y-m-d H:i:s') : null,
                 'updated_at' => $this->updated_at ? $this->updated_at->format('Y-m-d H:i:s') : null,
             ];

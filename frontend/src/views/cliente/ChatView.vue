@@ -6,11 +6,13 @@
  */
 
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import ChatMensajes from '@/components/chat/ChatMensajes.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
 import { useChat } from '@/composables/useChat'
 
+const route = useRoute()
 const { chat, obtenerChat, enviarMensaje, marcarComoLeido, obtenerUrlArchivo, cargandoChat } = useChat()
 
 const textoMensaje = ref('')
@@ -28,6 +30,26 @@ onMounted(async () => {
   try {
     await obtenerChat()
     await marcarComoLeido()
+    
+    // Detectar query param reagendar y prellenar mensaje
+    if (route.query.reagendar === 'true') {
+      const fecha = route.query.fecha || ''
+      const hora = route.query.hora || ''
+      const evaluacionId = route.query.evaluacionId || ''
+      
+      let mensajeReagendar = 'Hola, necesito reagendar mi evaluación.'
+      
+      if (fecha || hora) {
+        mensajeReagendar += '\n\nFecha actual: ' + (fecha || 'No especificada')
+        if (hora) {
+          mensajeReagendar += ' a las ' + hora
+        }
+      }
+      
+      mensajeReagendar += '\n\n¿Qué días y horarios tienes disponibles?'
+      
+      textoMensaje.value = mensajeReagendar
+    }
   } catch (err) {
     console.error('Error al cargar chat:', err)
   }

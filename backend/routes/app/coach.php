@@ -15,6 +15,7 @@ use App\Http\Controllers\Coach\ControladorFormulario;
 use App\Http\Controllers\Coach\ControladorChat;
 use App\Http\Controllers\Coach\ControladorProducto;
 use App\Http\Controllers\Coach\ControladorOrden;
+use App\Http\Controllers\Coach\ControladorBuscarLugares;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -390,4 +391,12 @@ Route::prefix('coach')
     
     Route::put('/ordenes/{id}/estado', [ControladorOrden::class, 'cambiarEstado'])
         ->name('coach.ordenes.cambiar-estado');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Búsqueda de Lugares (SerpAPI)
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/buscar-lugares', [ControladorBuscarLugares::class, 'buscar'])
+        ->name('coach.buscar-lugares');
 });

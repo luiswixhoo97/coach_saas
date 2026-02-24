@@ -11,9 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Eliminar tabla si existe (no hay datos según verificación)
+        Schema::dropIfExists('parametros_cliente');
+        
         Schema::create('parametros_cliente', function (Blueprint $table) {
             $table->id();
             $table->foreignId('cliente_id')->constrained('clientes')->onDelete('cascade');
+            $table->foreignId('evaluacion_id')->constrained('evaluaciones')->onDelete('cascade');
             $table->foreignId('parametro_id')->constrained('parametros')->onDelete('cascade');
             $table->string('valor');
             $table->date('fecha');
@@ -22,6 +26,7 @@ return new class extends Migration
             
             // Índices para optimizar consultas
             $table->index('cliente_id');
+            $table->index('evaluacion_id');
             $table->index('parametro_id');
             $table->index('fecha');
             $table->index(['cliente_id', 'fecha']); // Composite para historial por cliente

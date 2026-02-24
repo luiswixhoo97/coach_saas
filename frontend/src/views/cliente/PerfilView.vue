@@ -6,6 +6,7 @@ import { useAuth } from '@/composables/useAuth'
 import BaseSegmentedControl from '@/components/ui/BaseSegmentedControl.vue'
 import CircularProgress from '@/components/stats/CircularProgress.vue'
 import HistorialModal from '@/components/stats/HistorialModal.vue'
+import EvaluacionAgendadaCard from '@/components/cliente/EvaluacionAgendadaCard.vue'
 
 const { get, cargando } = useApi()
 const { logout } = useAuth()
@@ -14,6 +15,7 @@ const error = ref('')
 const cerrandoSesion = ref(false)
 const tieneFormularioPendiente = ref(false)
 const formularioPendiente = ref(null)
+const evaluacionAgendada = ref(null)
 
 // Estadísticas
 const estadisticasRaw = ref([])
@@ -108,6 +110,17 @@ onMounted(async () => {
     } else {
       estadisticasRaw.value = []
     }
+
+    // Cargar evaluación agendada
+    try {
+      const resEvaluacion = await get('/cliente/evaluacion-agendada')
+      if (resEvaluacion.datos) {
+        evaluacionAgendada.value = resEvaluacion.datos
+      }
+    } catch (e) {
+      // Si no hay evaluación agendada, simplemente no mostrar
+      evaluacionAgendada.value = null
+    }
   } catch (e) {
     error.value = e.message || 'No se pudo cargar el perfil.'
   }
@@ -159,6 +172,14 @@ onMounted(async () => {
           </RouterLink>
         </div>
       </section>
+
+      <!-- Evaluación agendada -->
+      <EvaluacionAgendadaCard 
+        v-if="evaluacionAgendada"
+        :evaluacion="evaluacionAgendada"
+        @confirmada="(evaluacion) => { evaluacionAgendada = evaluacion }"
+        @reagendada="(evaluacion) => { evaluacionAgendada = evaluacion }"
+      />
 
       <!-- Details grid -->
       <section class="perfil__section">

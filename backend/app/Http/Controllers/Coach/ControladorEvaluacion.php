@@ -43,7 +43,10 @@ class ControladorEvaluacion extends Controller
         $evaluacion = Evaluacion::create([
             'suscripcion_id' => $suscripcion->id,
             'fecha' => $request->fecha,
+            'hora' => $request->hora,
+            'ubicacion_o_link' => $request->ubicacion_o_link,
             'modo' => $request->modo,
+            'estado' => $request->estado ?? 'agendada',
             'fuente' => $request->fuente,
             'notas' => $request->notas,
         ]);
@@ -80,12 +83,15 @@ class ControladorEvaluacion extends Controller
 
         $request->validate([
             'fecha' => 'sometimes|date',
+            'hora' => 'sometimes|date_format:H:i',
+            'ubicacion_o_link' => 'nullable|string|max:500',
             'modo' => 'sometimes|in:presencial,online',
+            'estado' => 'sometimes|in:agendada,confirmada,reagendar,cancelada,completada',
             'fuente' => 'sometimes|string|max:100',
             'notas' => 'nullable|string',
         ]);
 
-        $evaluacion->update($request->only(['fecha', 'modo', 'fuente', 'notas']));
+        $evaluacion->update($request->only(['fecha', 'hora', 'ubicacion_o_link', 'modo', 'estado', 'fuente', 'notas']));
 
         return response()->json([
             'mensaje' => 'Evaluación actualizada correctamente.',
@@ -115,6 +121,7 @@ class ControladorEvaluacion extends Controller
         $request->validate([
             'parametro_id' => 'required|exists:parametros,id',
             'valor' => 'required|string',
+            'notas' => 'nullable|string',
         ]);
 
         $coach = $this->getCoach($request);
@@ -124,7 +131,10 @@ class ControladorEvaluacion extends Controller
 
         ParametroEvaluacion::updateOrCreate(
             ['evaluacion_id' => $evaluacion->id, 'parametro_id' => $request->parametro_id],
-            ['valor' => $request->valor]
+            [
+                'valor' => $request->valor,
+                'notas' => $request->notas,
+            ]
         );
 
         return response()->json(['mensaje' => 'Parámetro agregado correctamente.']);
