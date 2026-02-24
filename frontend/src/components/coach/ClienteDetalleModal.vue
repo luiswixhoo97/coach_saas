@@ -1,13 +1,15 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useApi } from '@/composables/useApi'
 import Swal from 'sweetalert2'
 import BaseSwitch from '@/components/ui/BaseSwitch.vue'
 import RutinaDetalleModal from '@/components/coach/RutinaDetalleModal.vue'
 import AsignarRutinaClienteModal from '@/components/coach/AsignarRutinaClienteModal.vue'
 import FormularioClienteModal from '@/components/coach/FormularioClienteModal.vue'
+import ParametrosYFormularioModal from '@/components/coach/ParametrosYFormularioModal.vue'
 import CrearEvaluacionModal from '@/components/coach/CrearEvaluacionModal.vue'
-import { useRouter } from 'vue-router'
+import DetalleEvaluacionModal from '@/components/coach/DetalleEvaluacionModal.vue'
+import ReagendarEvaluacionModal from '@/components/coach/ReagendarEvaluacionModal.vue'
 
 /**
  * ClienteDetalleModal - Detalle del cliente en móvil (bottom sheet).
@@ -23,7 +25,6 @@ const props = defineProps({
 const emit = defineEmits(['close', 'asignar-rutina', 'subir-dieta', 'dieta-eliminada', 'rutina-asignada', 'cliente-actualizado'])
 
 const { del, get, put } = useApi()
-const router = useRouter()
 
 // Estado para el modal de preview
 const showPreviewModal = ref(false)
@@ -39,11 +40,18 @@ const cargandoRutina = ref(false)
 const showAsignarRutinaClienteModal = ref(false)
 const procesandoActivo = ref(false)
 
-// Estado para formularios
+// Estado para formularios y parámetros unificados
 const showFormularioClienteModal = ref(false)
+const showParametrosYFormularioModal = ref(false)
 
 // Estado para evaluaciones
 const showCrearEvaluacionModal = ref(false)
+const evaluacionesCliente = ref([])
+const cargandoEvaluaciones = ref(false)
+const showDetalleEvaluacionModal = ref(false)
+const evaluacionSeleccionada = ref(null)
+const showReagendarEvaluacionModal = ref(false)
+const evaluacionParaReagendar = ref(null)
 
 function nombreCompleto(c) {
   if (!c) return ''
@@ -392,10 +400,13 @@ async function quitarDieta(dieta) {
   }
 }
 
-function abrirParametros() {
+function abrirParametrosYFormulario() {
   if (!props.cliente) return
-  emit('close')
-  router.push({ name: 'CoachParametrosCliente', params: { id: props.cliente.id } })
+  showParametrosYFormularioModal.value = true
+}
+
+function cerrarParametrosYFormularioModal() {
+  showParametrosYFormularioModal.value = false
 }
 
 function abrirFormulario() {
@@ -417,9 +428,60 @@ async function onFormularioCompletado() {
   }
 }
 
+async function cargarEvaluaciones() {
+  if (!props.cliente?.id) return
+  cargandoEvaluaciones.value = true
+  try {
+    const res = await get(`/coach/clientes/${props.cliente.id}/evaluaciones`)
+    evaluacionesCliente.value = res.datos ?? res.data ?? []
+  } catch {
+    evaluacionesCliente.value = []
+  } finally {
+    cargandoEvaluaciones.value = false
+  }
+}
+
+watch(
+  () => props.cliente?.id,
+  (id) => {
+    if (id) cargarEvaluaciones()
+    else evaluacionesCliente.value = []
+  },
+  { immediate: true }
+)
+
+function abrirDetalleEvaluacion(evaluacion) {
+  evaluacionSeleccionada.value = evaluacion
+  showDetalleEvaluacionModal.value = true
+}
+
+function abrirReagendar(evaluacion) {
+  evaluacionParaReagendar.value = evaluacion
+  showReagendarEvaluacionModal.value = true
+}
+
+function cerrarReagendarModal() {
+  showReagendarEvaluacionModal.value = false
+  evaluacionParaReagendar.value = null
+  cargarEvaluaciones()
+}
+
+// Mostrar solo evaluaciones que no estén completadas (estado !== 'completada')
+const evaluacionesPendientes = computed(() =>
+  evaluacionesCliente.value.filter(
+    (ev) => (ev.estado || 'agendada') !== 'completada'
+  )
+)
+
+function cerrarDetalleEvaluacion() {
+  showDetalleEvaluacionModal.value = false
+  evaluacionSeleccionada.value = null
+  cargarEvaluaciones()
+}
+
 async function onEvaluacionCreada() {
   showCrearEvaluacionModal.value = false
-  // Recargar datos del cliente si es necesario
+  await cargarEvaluaciones()
   if (props.cliente) {
     const res = await get(`/coach/clientes/${props.cliente.id}`)
     const clienteActualizado = res.datos ?? res.data ?? res
@@ -638,33 +700,13 @@ async function onEvaluacionCreada() {
             </div>
           </div>
 
-          <!-- Sección Parámetros -->
-          <div class="cliente-modal__section">
-            <div class="cliente-modal__section-header">
-              <h3 class="cliente-modal__section-title">Parámetros</h3>
-              <button
-                type="button"
-                class="cliente-modal__section-btn cliente-modal__section-btn--primary"
-                @click="abrirParametros"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                </svg>
-                <span>Ver parámetros</span>
-              </button>
-            </div>
-            <div class="cliente-modal__empty-state">
-              <p class="cliente-modal__empty-text">Gestiona los parámetros del cliente</p>
-            </div>
-          </div>
-
           <!-- Sección Evaluaciones -->
-          <div class="cliente-modal__section">
+          <div class="cliente-modal__section cliente-modal__section--eval">
             <div class="cliente-modal__section-header">
               <h3 class="cliente-modal__section-title">Evaluaciones</h3>
               <button
                 type="button"
-                class="cliente-modal__section-btn cliente-modal__section-btn--primary"
+                class="cliente-modal__section-btn cliente-modal__section-btn--upload"
                 @click="showCrearEvaluacionModal = true"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -675,47 +717,71 @@ async function onEvaluacionCreada() {
                 <span>Agendar evaluación</span>
               </button>
             </div>
-            <div class="cliente-modal__empty-state">
+            <div v-if="cargandoEvaluaciones" class="cliente-modal__empty-state">
+              <p class="cliente-modal__empty-text">Cargando evaluaciones...</p>
+            </div>
+            <div v-else-if="evaluacionesPendientes.length === 0" class="cliente-modal__empty-state">
               <p class="cliente-modal__empty-text">Agenda evaluaciones para el cliente</p>
             </div>
+            <ul v-else class="cliente-modal__eval-list">
+              <li
+                v-for="ev in evaluacionesPendientes"
+                :key="ev.id"
+                class="cliente-modal__eval-item"
+              >
+                <div class="cliente-modal__eval-info">
+                  <span class="cliente-modal__eval-fecha">{{ ev.fecha }} {{ ev.hora || '' }}</span>
+                  <span class="cliente-modal__eval-estado" :class="`cliente-modal__eval-estado--${ev.estado || 'agendada'}`">
+                    {{ (ev.estado || 'agendada').charAt(0).toUpperCase() + (ev.estado || 'agendada').slice(1) }}
+                  </span>
+                  <span v-if="ev.direccion || ev.ubicacion?.nombre" class="cliente-modal__eval-ubicacion">
+                    {{ ev.ubicacion?.nombre || ev.direccion }}
+                  </span>
+                </div>
+                <button
+                  v-if="(ev.estado || 'agendada') === 'reagendar'"
+                  type="button"
+                  class="cliente-modal__section-btn cliente-modal__section-btn--compact cliente-modal__eval-btn"
+                  @click="abrirReagendar(ev)"
+                >
+                  <span>Reagendar</span>
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="cliente-modal__section-btn cliente-modal__section-btn--compact cliente-modal__eval-btn"
+                  @click="abrirDetalleEvaluacion(ev)"
+                >
+                  <span>Registrar parámetros</span>
+                </button>
+              </li>
+            </ul>
           </div>
 
-          <!-- Sección Formularios -->
+          <!-- Sección Parámetros y Formulario (al final) -->
           <div class="cliente-modal__section">
             <div class="cliente-modal__section-header">
-              <h3 class="cliente-modal__section-title">Formularios</h3>
+              <h3 class="cliente-modal__section-title">Parámetros y formulario</h3>
               <button
-                v-if="!cliente?.formulario_completado"
                 type="button"
-                class="cliente-modal__section-btn cliente-modal__section-btn--primary"
-                @click="abrirFormulario"
+                class="cliente-modal__section-btn cliente-modal__section-btn--upload"
+                @click="abrirParametrosYFormulario"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
                   <line x1="16" y1="13" x2="8" y2="13"/>
                   <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10 9 9 9 8 9"/>
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                 </svg>
-                <span>Llenar formulario</span>
-              </button>
-              <button
-                v-else
-                type="button"
-                class="cliente-modal__section-btn cliente-modal__section-btn--view"
-                @click="abrirFormulario"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-                <span>Ver respuestas</span>
+                <span>Ver historial</span>
               </button>
             </div>
             <div class="cliente-modal__empty-state">
-              <p class="cliente-modal__empty-text">Llena formularios por el cliente</p>
+              <p class="cliente-modal__empty-text">Historial de parámetros y formulario del cliente</p>
             </div>
           </div>
+
         </div>
 
         <div class="cliente-modal__footer">
@@ -786,11 +852,29 @@ async function onEvaluacionCreada() {
         />
 
     <!-- Modal Crear Evaluación -->
+    <ParametrosYFormularioModal
+      v-if="showParametrosYFormularioModal && cliente"
+      :cliente="cliente"
+      @close="cerrarParametrosYFormularioModal"
+      @abrir-formulario="abrirFormulario"
+    />
     <CrearEvaluacionModal
       v-if="showCrearEvaluacionModal && cliente"
       :cliente="cliente"
       @close="showCrearEvaluacionModal = false"
       @creada="onEvaluacionCreada"
+    />
+    <DetalleEvaluacionModal
+      v-if="showDetalleEvaluacionModal && evaluacionSeleccionada"
+      :evaluacion="evaluacionSeleccionada"
+      @close="cerrarDetalleEvaluacion"
+      @actualizado="cargarEvaluaciones"
+    />
+    <ReagendarEvaluacionModal
+      v-if="showReagendarEvaluacionModal && evaluacionParaReagendar"
+      :evaluacion="evaluacionParaReagendar"
+      @close="cerrarReagendarModal"
+      @actualizado="cargarEvaluaciones"
     />
   </Teleport>
 </template>
@@ -1085,6 +1169,116 @@ async function onEvaluacionCreada() {
 .cliente-modal__section-btn--view:hover {
   background: rgba(0, 210, 97, 0.2);
   border-color: #00D261;
+}
+
+/* Botón compacto para Evaluaciones/Formularios en móvil (evitar que sea enorme) */
+.cliente-modal__section-header--compact {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cliente-modal__section-btn--compact {
+  flex-shrink: 0;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.cliente-modal__section-btn--compact svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .cliente-modal__section--eval .cliente-modal__section-header {
+    align-items: center;
+  }
+  .cliente-modal__section-btn--compact {
+    padding: 0.3125rem 0.5rem;
+    font-size: 0.6875rem;
+  }
+  .cliente-modal__section-btn--compact svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.cliente-modal__eval-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cliente-modal__eval-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #252525;
+  border-radius: 8px;
+  border: 1px solid #2a2a2a;
+  flex-wrap: wrap;
+}
+
+.cliente-modal__eval-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.cliente-modal__eval-fecha {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.cliente-modal__eval-estado {
+  font-size: 0.75rem;
+  text-transform: capitalize;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.cliente-modal__eval-estado--agendada {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+}
+
+.cliente-modal__eval-estado--confirmada {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+}
+
+.cliente-modal__eval-estado--completada {
+  background: rgba(0, 210, 97, 0.2);
+  color: #00D261;
+}
+
+.cliente-modal__eval-estado--cancelada {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
+.cliente-modal__eval-estado--reagendar {
+  background: rgba(156, 39, 176, 0.2);
+  color: #ce93d8;
+}
+
+.cliente-modal__eval-ubicacion {
+  font-size: 0.75rem;
+  color: #697586;
+}
+
+.cliente-modal__eval-btn {
+  flex-shrink: 0;
 }
 
 .cliente-modal__rutinas,

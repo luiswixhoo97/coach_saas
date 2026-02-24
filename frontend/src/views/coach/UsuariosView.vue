@@ -11,6 +11,7 @@ import SubirDietaModal from '@/components/coach/SubirDietaModal.vue'
 import SubirDietaUsuariosModal from '@/components/coach/SubirDietaUsuariosModal.vue'
 import FormularioClienteModal from '@/components/coach/FormularioClienteModal.vue'
 import ParametrosClienteModal from '@/components/coach/ParametrosClienteModal.vue'
+import CrearEvaluacionModal from '@/components/coach/CrearEvaluacionModal.vue'
 
 const { get, put, cargando } = useApi()
 const clientes = ref([])
@@ -35,6 +36,8 @@ const clienteParaAsignar = ref(null)
 const clientesProcesando = ref(new Set())
 const showFormularioClienteModal = ref(false)
 const showParametrosClienteModal = ref(false)
+const showCrearEvaluacionModal = ref(false)
+const clienteParaEvaluacion = ref(null)
 
 const paginaActual = computed(() => meta.value.pagina_actual ?? 1)
 const totalPaginas = computed(() => meta.value.ultima_pagina ?? 1)
@@ -81,7 +84,6 @@ function checkMobile() {
 }
 
 async function abrirDetalle(c) {
-  if (!isMobile.value) return
   modalDetalle.value = true
   detalleCliente.value = null
   cargandoDetalle.value = true
@@ -246,6 +248,26 @@ function onParametrosGuardado() {
   cargarClientes(paginaActual.value)
 }
 
+function abrirCrearEvaluacion(c) {
+  clienteParaEvaluacion.value = c
+  showCrearEvaluacionModal.value = true
+}
+
+function cerrarCrearEvaluacionModal() {
+  showCrearEvaluacionModal.value = false
+  clienteParaEvaluacion.value = null
+}
+
+async function onEvaluacionCreada() {
+  const clienteId = clienteParaEvaluacion.value?.id
+  cerrarCrearEvaluacionModal()
+  await cargarClientes(paginaActual.value)
+  if (modalDetalle.value && detalleCliente.value?.id === clienteId && clienteId) {
+    const res = await get(`/coach/clientes/${clienteId}`)
+    detalleCliente.value = res.datos ?? res.data ?? res
+  }
+}
+
 function abrirFormulario(c) {
   clienteParaAsignar.value = c
   showFormularioClienteModal.value = true
@@ -298,13 +320,14 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
             type="button"
             class="usuarios__header-action-btn"
             @click="abrirSubirDietaUsuarios"
+            title="Subir dieta a varios clientes"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/>
               <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
-            <span>Subir dieta</span>
+            <span>Subir dieta a varios</span>
           </button>
         </div>
         <div class="usuarios__filtros">
@@ -406,7 +429,16 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
                       @click.stop
                     />
                   </td>
-                  <td class="usuarios__td">{{ nombreCompleto(c) }}</td>
+                  <td
+                    class="usuarios__td usuarios__td--nombre"
+                    role="button"
+                    tabindex="0"
+                    @click="!isMobile && abrirDetalle(c)"
+                    @keydown.enter.prevent="!isMobile && abrirDetalle(c)"
+                    @keydown.space.prevent="!isMobile && abrirDetalle(c)"
+                  >
+                    {{ nombreCompleto(c) }}
+                  </td>
                   <td class="usuarios__td usuarios__td--email">{{ c.email || '—' }}</td>
                   <td class="usuarios__td">
                     <div class="usuarios__estado-container">
@@ -444,76 +476,19 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
                     </span>
                   </td>
                   <td class="usuarios__td">
-                    <div class="usuarios__acciones">
-                      <button
-                        type="button"
-                        class="usuarios__accion-btn usuarios__accion-btn--primary"
-                        @click="abrirAsignarRutina(c)"
-                        title="Asignar rutina"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
-                          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                        </svg>
-                        Rutina
-                      </button>
-                      <button
-                        type="button"
-                        class="usuarios__accion-btn usuarios__accion-btn--primary"
-                        @click="abrirSubirDieta(c)"
-                        title="Subir dieta"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                          <polyline points="17 8 12 3 7 8"/>
-                          <line x1="12" y1="3" x2="12" y2="15"/>
-                        </svg>
-                        Dieta
-                      </button>
-                      <button
-                        type="button"
-                        class="usuarios__accion-btn usuarios__accion-btn--primary"
-                        @click="abrirParametros(c)"
-                        title="Parámetros"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
-                          <circle cx="9" cy="7" r="3"/>
-                          <path d="M6 2v10"/>
-                          <circle cx="15" cy="17" r="3"/>
-                          <path d="M18 12v10"/>
-                          <line x1="3" y1="3" x2="21" y2="21"/>
-                        </svg>
-                        Parámetros
-                      </button>
-                      <button
-                        v-if="!c?.formulario_completado"
-                        type="button"
-                        class="usuarios__accion-btn usuarios__accion-btn--primary"
-                        @click="abrirFormulario(c)"
-                        title="Llenar formulario"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                          <polyline points="14 2 14 8 20 8"/>
-                          <line x1="16" y1="13" x2="8" y2="13"/>
-                          <line x1="16" y1="17" x2="8" y2="17"/>
-                          <polyline points="10 9 9 9 8 9"/>
-                        </svg>
-                        Llenar
-                      </button>
-                      <button
-                        v-else
-                        type="button"
-                        class="usuarios__accion-btn usuarios__accion-btn--primary"
-                        @click="abrirFormulario(c)"
-                        title="Ver respuestas del formulario"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                          <circle cx="12" cy="12" r="3"/>
-                        </svg>
-                        Ver
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      class="usuarios__accion-btn usuarios__accion-btn--ver"
+                      title="Ver detalle y acciones"
+                      aria-label="Ver detalle del cliente"
+                      @click="abrirDetalle(c)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__accion-icon">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                      <span>Ver detalle</span>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -626,6 +601,14 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
           :cliente="clienteParaAsignar"
           @close="cerrarParametrosClienteModal"
           @guardado="onParametrosGuardado"
+        />
+
+        <!-- Modal crear evaluación (desktop y móvil desde detalle) -->
+        <CrearEvaluacionModal
+          v-if="showCrearEvaluacionModal && clienteParaEvaluacion"
+          :cliente="clienteParaEvaluacion"
+          @close="cerrarCrearEvaluacionModal"
+          @creada="onEvaluacionCreada"
         />
 
         <!-- Paginación -->
@@ -1250,5 +1233,37 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
   background: rgba(0, 210, 97, 0.2);
   border-color: #00D261;
   transform: translateY(-1px);
+}
+
+/* Nombre clicable en desktop para abrir detalle */
+@media (min-width: 769px) {
+  .usuarios__td--nombre {
+    cursor: pointer;
+  }
+  .usuarios__td--nombre:hover {
+    color: #00D261;
+    text-decoration: underline;
+  }
+}
+
+/* Botón Ver detalle (abre modal como en móvil) */
+.usuarios__accion-btn--ver {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #00D261;
+  background: rgba(0, 210, 97, 0.1);
+  border: 1px solid rgba(0, 210, 97, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.usuarios__accion-btn--ver:hover {
+  background: rgba(0, 210, 97, 0.2);
+  border-color: #00D261;
 }
 </style>
