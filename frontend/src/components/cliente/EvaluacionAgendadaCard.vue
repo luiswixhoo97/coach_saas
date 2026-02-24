@@ -18,40 +18,37 @@ const evaluacionData = ref(props.evaluacion)
 const confirmando = ref(false)
 const error = ref('')
 
+const linkUbicacion = computed(() => {
+  const data = evaluacionData.value
+  if (data?.ubicacion?.link_google_maps) return data.ubicacion.link_google_maps
+  return data?.ubicacion_o_link || ''
+})
+
 const esLink = computed(() => {
-  if (!evaluacionData.value?.ubicacion_o_link) return false
-  const link = evaluacionData.value.ubicacion_o_link
+  const link = linkUbicacion.value
+  if (!link) return false
   return link.startsWith('http://') || link.startsWith('https://') || link.startsWith('www.')
 })
 
 const esGoogleMaps = computed(() => {
-  if (!evaluacionData.value?.ubicacion_o_link) return false
-  return evaluacionData.value.ubicacion_o_link.includes('google.com.mx/maps') || 
-         evaluacionData.value.ubicacion_o_link.includes('google.com/maps')
+  const link = linkUbicacion.value
+  if (!link) return false
+  return link.includes('google.com.mx/maps') || link.includes('google.com/maps')
 })
 
 const textoUbicacion = computed(() => {
-  // Si hay dirección guardada, mostrarla
-  if (evaluacionData.value?.direccion) {
-    return evaluacionData.value.direccion
+  const data = evaluacionData.value
+  // Preferir objeto ubicación cuando exista (tabla global)
+  if (data?.ubicacion) {
+    return data.ubicacion.nombre || data.ubicacion.direccion || 'Ver ubicación en Google Maps'
   }
-  
-  // Si no hay dirección pero hay link, mostrar texto según el tipo
-  if (!evaluacionData.value?.ubicacion_o_link) return ''
-  
-  const link = evaluacionData.value.ubicacion_o_link
-  
-  // Si es Google Maps, mostrar texto amigable
-  if (esGoogleMaps.value) {
-    return 'Ver ubicación en Google Maps'
+  if (data?.direccion) {
+    return data.direccion
   }
-  
-  // Si es otro tipo de link (videollamada), mostrar el link completo
-  if (esLink.value) {
-    return link
-  }
-  
-  // Si es texto plano, mostrarlo tal cual
+  if (!data?.ubicacion_o_link) return ''
+  const link = data.ubicacion_o_link
+  if (esGoogleMaps.value) return 'Ver ubicación en Google Maps'
+  if (esLink.value) return link
   return link
 })
 
@@ -152,17 +149,15 @@ function reagendar() {
 
 function abrirVideollamada() {
   if (!esLink.value) return
-  const link = evaluacionData.value.ubicacion_o_link
+  const link = linkUbicacion.value
   const url = link.startsWith('http') ? link : `https://${link}`
   window.open(url, '_blank')
 }
 
 function abrirUbicacion() {
-  if (!evaluacionData.value?.ubicacion_o_link) return
-  const link = evaluacionData.value.ubicacion_o_link
-  
-  // Si es un link de Google Maps o videollamada, abrirlo
-  if (link.includes('google.com.mx/maps') || link.startsWith('http://') || link.startsWith('https://') || link.startsWith('www.')) {
+  const link = linkUbicacion.value
+  if (!link) return
+  if (link.includes('google.com.mx/maps') || link.includes('google.com/maps') || link.startsWith('http://') || link.startsWith('https://') || link.startsWith('www.')) {
     const url = link.startsWith('http') ? link : (link.startsWith('www.') ? `https://${link}` : link)
     window.open(url, '_blank')
   }
@@ -231,7 +226,7 @@ onMounted(async () => {
         </div>
 
         <!-- Bloque: Ubicación -->
-        <div v-if="evaluacionData.ubicacion_o_link" class="evaluacion-agendada__block">
+        <div v-if="evaluacionData.ubicacion || evaluacionData.ubicacion_o_link" class="evaluacion-agendada__block">
           <div class="evaluacion-agendada__info-item">
             <svg class="evaluacion-agendada__info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
@@ -296,7 +291,7 @@ onMounted(async () => {
         </button>
 
         <button
-          v-if="esLink && !evaluacionData.ubicacion_o_link.includes('google.com.mx/maps')"
+          v-if="esLink && !esGoogleMaps"
           type="button"
           class="evaluacion-agendada__btn evaluacion-agendada__btn--link"
           @click="abrirVideollamada"

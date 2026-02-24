@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useApi } from '@/composables/useApi'
 import Swal from 'sweetalert2'
 import InputPlacesAutocomplete from '@/components/ui/InputPlacesAutocomplete.vue'
@@ -38,6 +38,8 @@ const modoOpciones = [
 
 // Display value para el input de ubicación (muestra nombre/dirección, no la URL)
 const ubicacionDisplay = ref('')
+// Lugar seleccionado del autocompletado (para enviar ubicacion_id o ubicacion al backend)
+const selectedLugar = ref(null)
 
 const esLink = computed(() => {
   if (!formData.value.ubicacion_o_link) return false
@@ -50,6 +52,15 @@ const placeholderUbicacion = computed(() => {
     return 'Ej: Calle Principal 123, Ciudad'
   }
   return 'Ej: https://meet.google.com/abc-defg-hij'
+})
+
+watch(() => formData.value.modo, (modo) => {
+  if (modo === 'online') {
+    selectedLugar.value = null
+    formData.value.ubicacion_o_link = ''
+    formData.value.direccion = ''
+    ubicacionDisplay.value = ''
+  }
 })
 
 onMounted(async () => {
@@ -134,9 +145,24 @@ async function guardar() {
       hora: formData.value.hora,
       modo: formData.value.modo,
       estado: 'agendada',
-      ubicacion_o_link: formData.value.ubicacion_o_link.trim() || null,
-      direccion: formData.value.direccion.trim() || null,
-      notas: formData.value.notas.trim() || null
+      ubicacion_o_link: formData.value.ubicacion_o_link?.trim() || null,
+      direccion: formData.value.direccion?.trim() || null,
+      notas: formData.value.notas?.trim() || null
+    }
+
+    // Presencial: enviar ubicacion_id (si vino de caché) o ubicacion (si vino de API) para alimentar tabla global
+    if (formData.value.modo === 'presencial' && selectedLugar.value?.link_google_maps) {
+      const lugar = selectedLugar.value
+      const idNum = Number(lugar.id)
+      if (Number.isInteger(idNum) && idNum > 0) {
+        payload.ubicacion_id = idNum
+      } else {
+        payload.ubicacion = {
+          link_google_maps: lugar.link_google_maps,
+          nombre: lugar.nombre || '',
+          direccion: lugar.direccion_completa || lugar.direccion || ''
+        }
+      }
     }
 
     const response = await post('/coach/evaluaciones', payload)
@@ -165,6 +191,14 @@ async function guardar() {
   } finally {
     guardando.value = false
   }
+}
+
+function onSelectLugar(lugar) {
+  if (!lugar?.link_google_maps) return
+  formData.value.ubicacion_o_link = lugar.link_google_maps
+  formData.value.direccion = lugar.direccion_completa || lugar.direccion || lugar.nombre || ''
+  ubicacionDisplay.value = lugar.nombre || lugar.direccion || lugar.direccion_completa || ''
+  selectedLugar.value = lugar
 }
 
 function cerrar() {
@@ -285,15 +319,7 @@ function cerrar() {
                 v-model="ubicacionDisplay"
                 placeholder="Buscar gimnasio, dirección o lugar..."
                 class="crear-evaluacion-modal__input-places"
-                @select="(lugar) => { 
-                  // Guardar tanto la dirección como el link
-                  if (lugar.link_google_maps) {
-                    formData.ubicacion_o_link = lugar.link_google_maps
-                    formData.direccion = lugar.direccion_completa || lugar.direccion || lugar.nombre || ''
-                    // Mostrar nombre o dirección en el input
-                    ubicacionDisplay = lugar.nombre || lugar.direccion || lugar.direccion_completa || ''
-                  }
-                }"
+                @select="onSelectLugar"
               />
               
               <!-- Input normal para modo online -->
