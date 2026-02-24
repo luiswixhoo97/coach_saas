@@ -14,6 +14,7 @@ class Evaluacion extends ModeloBase
         'suscripcion_id',
         'fecha',
         'hora',
+        'ubicacion_id',
         'ubicacion_o_link',
         'direccion',
         'modo',
@@ -37,6 +38,11 @@ class Evaluacion extends ModeloBase
     public function suscripcion(): BelongsTo
     {
         return $this->belongsTo(Suscripcion::class);
+    }
+
+    public function ubicacion(): BelongsTo
+    {
+        return $this->belongsTo(Ubicacion::class);
     }
 
     public function parametrosEvaluacion(): HasMany

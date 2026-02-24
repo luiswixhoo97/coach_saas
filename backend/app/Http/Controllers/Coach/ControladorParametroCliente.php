@@ -48,7 +48,7 @@ class ControladorParametroCliente extends Controller
 
         // Obtener historial de parámetros ordenado por fecha descendente
         try {
-            $parametros = ParametroCliente::with(['parametro', 'evaluacion'])
+            $parametros = ParametroCliente::with(['parametro', 'evaluacion.ubicacion'])
                 ->where('cliente_id', $clienteModel->id)
                 ->orderBy('fecha', 'desc')
                 ->orderBy('created_at', 'desc')
@@ -113,7 +113,7 @@ class ControladorParametroCliente extends Controller
                 'notas' => $request->notas,
             ]);
 
-            $parametroCliente->load('parametro');
+            $parametroCliente->load(['parametro', 'evaluacion.ubicacion']);
 
             return response()->json([
                 'mensaje' => 'Parámetro agregado correctamente.',
@@ -137,7 +137,7 @@ class ControladorParametroCliente extends Controller
     {
         $coach = $this->getCoach($request);
 
-        $parametroCliente = ParametroCliente::with('parametro')
+        $parametroCliente = ParametroCliente::with(['parametro', 'evaluacion.ubicacion'])
             ->whereHas('cliente', fn($q) => $q->where('creado_por', $coach->id))
             ->findOrFail($id);
 

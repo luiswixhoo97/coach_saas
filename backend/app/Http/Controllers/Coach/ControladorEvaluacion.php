@@ -10,6 +10,7 @@ use App\Models\Evaluacion;
 use App\Models\FotoEvaluacion;
 use App\Models\ParametroEvaluacion;
 use App\Models\Suscripcion;
+use App\Models\Ubicacion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -25,7 +26,7 @@ class ControladorEvaluacion extends Controller
     {
         $coach = $this->getCoach($request);
 
-        $evaluaciones = Evaluacion::with(['suscripcion.cliente.usuario'])
+        $evaluaciones = Evaluacion::with(['suscripcion.cliente.usuario', 'ubicacion'])
             ->whereHas('suscripcion.plan', fn($q) => $q->where('coach_id', $coach->id))
             ->orderBy('fecha', 'desc')
             ->paginate(15);
@@ -40,16 +41,22 @@ class ControladorEvaluacion extends Controller
         $suscripcion = Suscripcion::whereHas('plan', fn($q) => $q->where('coach_id', $coach->id))
             ->findOrFail($request->suscripcion_id);
 
+        $ubicacionId = $this->resolveUbicacionId($request);
+        $ubicacion = $ubicacionId ? Ubicacion::find($ubicacionId) : null;
+
         $evaluacion = Evaluacion::create([
             'suscripcion_id' => $suscripcion->id,
             'fecha' => $request->fecha,
             'hora' => $request->hora,
-            'ubicacion_o_link' => $request->ubicacion_o_link,
-            'direccion' => $request->direccion,
+            'ubicacion_id' => $ubicacionId,
+            'ubicacion_o_link' => $ubicacion ? $ubicacion->link_google_maps : $request->ubicacion_o_link,
+            'direccion' => $ubicacion ? $ubicacion->direccion : $request->direccion,
             'modo' => $request->modo,
             'estado' => $request->estado ?? 'agendada',
             'notas' => $request->notas,
         ]);
+
+        $evaluacion->load('ubicacion');
 
         return response()->json([
             'mensaje' => 'Evaluación creada correctamente.',
@@ -65,6 +72,7 @@ class ControladorEvaluacion extends Controller
             'suscripcion.cliente.usuario',
             'parametrosEvaluacion.parametro',
             'fotos',
+            'ubicacion',
         ])
             ->whereHas('suscripcion.plan', fn($q) => $q->where('coach_id', $coach->id))
             ->findOrFail($id);
@@ -84,6 +92,11 @@ class ControladorEvaluacion extends Controller
         $request->validate([
             'fecha' => 'sometimes|date',
             'hora' => 'sometimes|date_format:H:i',
+            'ubicacion_id' => 'nullable|exists:ubicaciones,id',
+            'ubicacion' => 'nullable|array',
+            'ubicacion.link_google_maps' => 'required_with:ubicacion|string|max:500',
+            'ubicacion.nombre' => 'nullable|string|max:255',
+            'ubicacion.direccion' => 'nullable|string|max:500',
             'ubicacion_o_link' => 'nullable|string|max:500',
             'direccion' => 'nullable|string|max:500',
             'modo' => 'sometimes|in:presencial,online',
@@ -91,12 +104,51 @@ class ControladorEvaluacion extends Controller
             'notas' => 'nullable|string',
         ]);
 
-        $evaluacion->update($request->only(['fecha', 'hora', 'ubicacion_o_link', 'direccion', 'modo', 'estado', 'notas']));
+        $ubicacionId = $this->resolveUbicacionId($request);
+        $ubicacion = $ubicacionId ? Ubicacion::find($ubicacionId) : null;
+
+        $evaluacion->update([
+            'fecha' => $request->input('fecha', $evaluacion->fecha),
+            'hora' => $request->input('hora', $evaluacion->hora),
+            'ubicacion_id' => $ubicacionId,
+            'ubicacion_o_link' => $ubicacion ? $ubicacion->link_google_maps : $request->ubicacion_o_link,
+            'direccion' => $ubicacion ? $ubicacion->direccion : $request->direccion,
+            'modo' => $request->input('modo', $evaluacion->modo),
+            'estado' => $request->input('estado', $evaluacion->estado),
+            'notas' => $request->input('notas', $evaluacion->notas),
+        ]);
+
+        $evaluacion->load('ubicacion');
 
         return response()->json([
             'mensaje' => 'Evaluación actualizada correctamente.',
-            'datos' => $evaluacion,
+            'datos' => new EvaluacionResource($evaluacion),
         ]);
+    }
+
+    /**
+     * Resolver ubicacion_id desde request: usar ubicacion_id si viene, o hacer upsert desde objeto ubicacion.
+     */
+    private function resolveUbicacionId(Request $request): ?int
+    {
+        if ($request->filled('ubicacion_id')) {
+            return (int) $request->ubicacion_id;
+        }
+
+        $ubicacionInput = $request->input('ubicacion');
+        if (!is_array($ubicacionInput) || empty($ubicacionInput['link_google_maps'])) {
+            return null;
+        }
+
+        $ubicacion = Ubicacion::updateOrCreate(
+            ['link_google_maps' => $ubicacionInput['link_google_maps']],
+            [
+                'nombre' => $ubicacionInput['nombre'] ?? '',
+                'direccion' => $ubicacionInput['direccion'] ?? '',
+            ]
+        );
+
+        return $ubicacion->id;
     }
 
     public function eliminar(Request $request, int $id): JsonResponse

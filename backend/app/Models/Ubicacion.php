@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ubicacion extends ModeloBase
 {
@@ -13,6 +14,17 @@ class Ubicacion extends ModeloBase
         'direccion',
         'link_google_maps',
     ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relaciones
+    |--------------------------------------------------------------------------
+    */
+
+    public function evaluaciones(): HasMany
+    {
+        return $this->hasMany(Evaluacion::class);
+    }
 
     /*
     |--------------------------------------------------------------------------

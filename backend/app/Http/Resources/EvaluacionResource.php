@@ -16,12 +16,21 @@ class EvaluacionResource extends JsonResource
                 : (is_string($this->hora) ? $this->hora : null);
         }
 
+        $hasUbicacion = $this->relationLoaded('ubicacion') && $this->ubicacion;
+
         return [
             'id' => $this->id,
             'fecha' => $this->fecha ? $this->fecha->format('Y-m-d') : null,
             'hora' => $hora,
-            'ubicacion_o_link' => $this->ubicacion_o_link,
-            'direccion' => $this->direccion,
+            'ubicacion_id' => $this->ubicacion_id,
+            'ubicacion' => $this->when($hasUbicacion, fn() => [
+                'id' => $this->ubicacion->id,
+                'nombre' => $this->ubicacion->nombre,
+                'direccion' => $this->ubicacion->direccion,
+                'link_google_maps' => $this->ubicacion->link_google_maps,
+            ]),
+            'ubicacion_o_link' => $hasUbicacion ? $this->ubicacion->link_google_maps : $this->ubicacion_o_link,
+            'direccion' => $hasUbicacion ? $this->ubicacion->direccion : $this->direccion,
             'modo' => $this->modo,
             'estado' => $this->estado ?? 'agendada',
             'notas' => $this->notas,

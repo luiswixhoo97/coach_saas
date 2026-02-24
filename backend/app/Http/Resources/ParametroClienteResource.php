@@ -56,13 +56,21 @@ class ParametroClienteResource extends JsonResource
                             : (is_string($this->evaluacion->hora) ? $this->evaluacion->hora : null);
                     }
 
+                    $hasUbicacion = $this->evaluacion->relationLoaded('ubicacion') && $this->evaluacion->ubicacion;
                     $evaluacionData = [
                         'id' => $this->evaluacion->id ?? null,
                         'fecha' => $evaluacionFecha,
                         'hora' => $evaluacionHora,
                         'modo' => $this->evaluacion->modo ?? null,
                         'estado' => $this->evaluacion->estado ?? null,
-                        'ubicacion_o_link' => $this->evaluacion->ubicacion_o_link ?? null,
+                        'ubicacion_o_link' => $hasUbicacion ? $this->evaluacion->ubicacion->link_google_maps : ($this->evaluacion->ubicacion_o_link ?? null),
+                        'direccion' => $hasUbicacion ? $this->evaluacion->ubicacion->direccion : ($this->evaluacion->direccion ?? null),
+                        'ubicacion' => $hasUbicacion ? [
+                            'id' => $this->evaluacion->ubicacion->id,
+                            'nombre' => $this->evaluacion->ubicacion->nombre,
+                            'direccion' => $this->evaluacion->ubicacion->direccion,
+                            'link_google_maps' => $this->evaluacion->ubicacion->link_google_maps,
+                        ] : null,
                     ];
                 } catch (\Exception $e) {
                     $evaluacionData = [
@@ -72,6 +80,8 @@ class ParametroClienteResource extends JsonResource
                         'modo' => null,
                         'estado' => null,
                         'ubicacion_o_link' => null,
+                        'direccion' => null,
+                        'ubicacion' => null,
                     ];
                 }
             }
