@@ -105,15 +105,31 @@ class ControladorEvaluacion extends Controller
 
     /**
      * Obtener la próxima evaluación agendada (presencial u online) con estado agendada/confirmada.
+     * Solo muestra evaluaciones que aún no han pasado (fecha >= hoy, y si es hoy, hora >= ahora).
      */
     public function evaluacionAgendada(Request $request): JsonResponse
     {
         $cliente = $this->getCliente($request);
 
+        $hoy = now();
+        $fechaHoy = $hoy->toDateString();
+        $horaAhora = $hoy->format('H:i:s');
+
         $evaluacion = Evaluacion::with(['suscripcion.cliente.usuario'])
             ->whereHas('suscripcion', fn($q) => $q->where('cliente_id', $cliente->id))
             ->whereIn('estado', ['agendada', 'confirmada'])
-            ->where('fecha', '>=', now()->toDateString())
+            ->where(function ($query) use ($fechaHoy, $horaAhora) {
+                // Fecha futura (después de hoy)
+                $query->where('fecha', '>', $fechaHoy)
+                    // O fecha de hoy pero con hora futura o sin hora especificada
+                    ->orWhere(function ($q) use ($fechaHoy, $horaAhora) {
+                        $q->where('fecha', '=', $fechaHoy)
+                            ->where(function ($subQ) use ($horaAhora) {
+                                $subQ->whereNull('hora')
+                                    ->orWhere('hora', '>=', $horaAhora);
+                            });
+                    });
+            })
             ->orderBy('fecha', 'asc')
             ->orderBy('hora', 'asc')
             ->first();

@@ -21,9 +21,9 @@ class EvaluacionResource extends JsonResource
             'fecha' => $this->fecha ? $this->fecha->format('Y-m-d') : null,
             'hora' => $hora,
             'ubicacion_o_link' => $this->ubicacion_o_link,
+            'direccion' => $this->direccion,
             'modo' => $this->modo,
             'estado' => $this->estado ?? 'agendada',
-            'fuente' => $this->fuente,
             'notas' => $this->notas,
             'cliente' => $this->when(
                 $this->relationLoaded('suscripcion') && $this->suscripcion->relationLoaded('cliente'),

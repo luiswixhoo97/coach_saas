@@ -45,9 +45,9 @@ class ControladorEvaluacion extends Controller
             'fecha' => $request->fecha,
             'hora' => $request->hora,
             'ubicacion_o_link' => $request->ubicacion_o_link,
+            'direccion' => $request->direccion,
             'modo' => $request->modo,
             'estado' => $request->estado ?? 'agendada',
-            'fuente' => $request->fuente,
             'notas' => $request->notas,
         ]);
 
@@ -85,13 +85,13 @@ class ControladorEvaluacion extends Controller
             'fecha' => 'sometimes|date',
             'hora' => 'sometimes|date_format:H:i',
             'ubicacion_o_link' => 'nullable|string|max:500',
+            'direccion' => 'nullable|string|max:500',
             'modo' => 'sometimes|in:presencial,online',
             'estado' => 'sometimes|in:agendada,confirmada,reagendar,cancelada,completada',
-            'fuente' => 'sometimes|string|max:100',
             'notas' => 'nullable|string',
         ]);
 
-        $evaluacion->update($request->only(['fecha', 'hora', 'ubicacion_o_link', 'modo', 'estado', 'fuente', 'notas']));
+        $evaluacion->update($request->only(['fecha', 'hora', 'ubicacion_o_link', 'direccion', 'modo', 'estado', 'notas']));
 
         return response()->json([
             'mensaje' => 'Evaluación actualizada correctamente.',

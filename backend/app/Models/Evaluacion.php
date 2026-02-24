@@ -15,9 +15,9 @@ class Evaluacion extends ModeloBase
         'fecha',
         'hora',
         'ubicacion_o_link',
+        'direccion',
         'modo',
         'estado',
-        'fuente',
         'notas',
     ];
 
@@ -65,10 +65,6 @@ class Evaluacion extends ModeloBase
         return $query->where('modo', $modo);
     }
 
-    public function scopeFuente($query, string $fuente)
-    {
-        return $query->where('fuente', $fuente);
-    }
 
     public function scopeEntreFechas($query, $inicio, $fin)
     {

@@ -18,9 +18,9 @@ class AlmacenarEvaluacionRequest extends FormRequest
             'fecha' => 'required|date',
             'hora' => 'required|date_format:H:i',
             'ubicacion_o_link' => 'nullable|string|max:500',
+            'direccion' => 'nullable|string|max:500',
             'modo' => 'required|in:presencial,online',
             'estado' => 'nullable|in:agendada,confirmada,reagendar,cancelada,completada',
-            'fuente' => 'nullable|string|max:100',
             'notas' => 'nullable|string',
         ];
     }
@@ -38,7 +38,6 @@ class AlmacenarEvaluacionRequest extends FormRequest
             'modo.required' => 'El modo es requerido.',
             'modo.in' => 'El modo debe ser: presencial u online.',
             'estado.in' => 'El estado debe ser: agendada, confirmada, reagendar, cancelada o completada.',
-            'fuente.max' => 'La fuente no puede exceder 100 caracteres.',
         ];
     }
 }
