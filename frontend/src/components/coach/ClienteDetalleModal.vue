@@ -53,6 +53,17 @@ const evaluacionSeleccionada = ref(null)
 const showReagendarEvaluacionModal = ref(false)
 const evaluacionParaReagendar = ref(null)
 
+const seccionesAbiertas = ref({
+  rutinas: false,
+  dieta: false,
+  evaluaciones: false,
+  parametrosFormulario: false
+})
+
+function toggleSeccion(seccion) {
+  seccionesAbiertas.value[seccion] = !seccionesAbiertas.value[seccion]
+}
+
 function nombreCompleto(c) {
   if (!c) return ''
   const partes = [c.nombre, c.apellido_paterno, c.apellido_materno].filter(Boolean)
@@ -577,13 +588,18 @@ async function onEvaluacionCreada() {
           </div>
 
           <!-- Sección Rutinas Asignadas -->
-          <div class="cliente-modal__section">
-            <div class="cliente-modal__section-header">
-              <h3 class="cliente-modal__section-title">Rutinas asignadas</h3>
+          <div class="cliente-modal__section" :class="{ 'cliente-modal__section--open': seccionesAbiertas.rutinas }">
+            <div class="cliente-modal__section-header" @click="toggleSeccion('rutinas')">
+              <span class="cliente-modal__section-title-wrap">
+                <svg class="cliente-modal__section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+                <h3 class="cliente-modal__section-title">Rutinas asignadas</h3>
+              </span>
               <button
                 type="button"
                 class="cliente-modal__section-btn cliente-modal__section-btn--assign"
-                @click="abrirAsignarRutinaCliente"
+                @click.stop="abrirAsignarRutinaCliente"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -595,6 +611,7 @@ async function onEvaluacionCreada() {
                 <span>Asignar rutina</span>
               </button>
             </div>
+            <div class="cliente-modal__section-content" :class="{ 'cliente-modal__section-content--collapsed': !seccionesAbiertas.rutinas }">
             <div v-if="cliente.rutinas_asignadas && cliente.rutinas_asignadas.length > 0" class="cliente-modal__rutinas">
               <div
                 v-for="(rutinas, dia) in rutinasPorDia(cliente.rutinas_asignadas)"
@@ -627,16 +644,22 @@ async function onEvaluacionCreada() {
             <div v-else class="cliente-modal__empty-state">
               <p class="cliente-modal__empty-text">No hay rutinas asignadas</p>
             </div>
+            </div>
           </div>
 
           <!-- Sección Dieta -->
-          <div class="cliente-modal__section">
-            <div class="cliente-modal__section-header">
-              <h3 class="cliente-modal__section-title">Dieta</h3>
+          <div class="cliente-modal__section" :class="{ 'cliente-modal__section--open': seccionesAbiertas.dieta }">
+            <div class="cliente-modal__section-header" @click="toggleSeccion('dieta')">
+              <span class="cliente-modal__section-title-wrap">
+                <svg class="cliente-modal__section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+                <h3 class="cliente-modal__section-title">Dieta</h3>
+              </span>
               <button
                 type="button"
                 class="cliente-modal__section-btn cliente-modal__section-btn--upload"
-                @click="emit('subir-dieta', cliente)"
+                @click.stop="emit('subir-dieta', cliente)"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -646,6 +669,7 @@ async function onEvaluacionCreada() {
                 <span>Subir archivos</span>
               </button>
             </div>
+            <div class="cliente-modal__section-content" :class="{ 'cliente-modal__section-content--collapsed': !seccionesAbiertas.dieta }">
             <div v-if="cliente.dietas && cliente.dietas.length > 0" class="cliente-modal__dietas">
               <div
                 v-for="dieta in cliente.dietas"
@@ -698,16 +722,22 @@ async function onEvaluacionCreada() {
             <div v-else class="cliente-modal__empty-state">
               <p class="cliente-modal__empty-text">No hay archivos de dieta</p>
             </div>
+            </div>
           </div>
 
           <!-- Sección Evaluaciones -->
-          <div class="cliente-modal__section cliente-modal__section--eval">
-            <div class="cliente-modal__section-header">
-              <h3 class="cliente-modal__section-title">Evaluaciones</h3>
+          <div class="cliente-modal__section cliente-modal__section--eval" :class="{ 'cliente-modal__section--open': seccionesAbiertas.evaluaciones }">
+            <div class="cliente-modal__section-header" @click="toggleSeccion('evaluaciones')">
+              <span class="cliente-modal__section-title-wrap">
+                <svg class="cliente-modal__section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+                <h3 class="cliente-modal__section-title">Evaluaciones</h3>
+              </span>
               <button
                 type="button"
                 class="cliente-modal__section-btn cliente-modal__section-btn--upload"
-                @click="showCrearEvaluacionModal = true"
+                @click.stop="showCrearEvaluacionModal = true"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"/>
@@ -717,6 +747,7 @@ async function onEvaluacionCreada() {
                 <span>Agendar evaluación</span>
               </button>
             </div>
+            <div class="cliente-modal__section-content" :class="{ 'cliente-modal__section-content--collapsed': !seccionesAbiertas.evaluaciones }">
             <div v-if="cargandoEvaluaciones" class="cliente-modal__empty-state">
               <p class="cliente-modal__empty-text">Cargando evaluaciones...</p>
             </div>
@@ -756,16 +787,22 @@ async function onEvaluacionCreada() {
                 </button>
               </li>
             </ul>
+            </div>
           </div>
 
           <!-- Sección Parámetros y Formulario (al final) -->
-          <div class="cliente-modal__section">
-            <div class="cliente-modal__section-header">
-              <h3 class="cliente-modal__section-title">Parámetros y formulario</h3>
+          <div class="cliente-modal__section" :class="{ 'cliente-modal__section--open': seccionesAbiertas.parametrosFormulario }">
+            <div class="cliente-modal__section-header" @click="toggleSeccion('parametrosFormulario')">
+              <span class="cliente-modal__section-title-wrap">
+                <svg class="cliente-modal__section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+                <h3 class="cliente-modal__section-title">Parámetros y formulario</h3>
+              </span>
               <button
                 type="button"
                 class="cliente-modal__section-btn cliente-modal__section-btn--upload"
-                @click="abrirParametrosYFormulario"
+                @click.stop="abrirParametrosYFormulario"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -777,8 +814,10 @@ async function onEvaluacionCreada() {
                 <span>Ver historial</span>
               </button>
             </div>
+            <div class="cliente-modal__section-content" :class="{ 'cliente-modal__section-content--collapsed': !seccionesAbiertas.parametrosFormulario }">
             <div class="cliente-modal__empty-state">
               <p class="cliente-modal__empty-text">Historial de parámetros y formulario del cliente</p>
+            </div>
             </div>
           </div>
 
@@ -1089,7 +1128,29 @@ async function onEvaluacionCreada() {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
+  cursor: pointer;
+  padding: 0.125rem 0;
+}
+
+.cliente-modal__section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.cliente-modal__section-chevron {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  color: #a0a0a0;
+  transition: transform 0.2s ease;
+}
+
+.cliente-modal__section--open .cliente-modal__section-chevron {
+  transform: rotate(90deg);
 }
 
 .cliente-modal__section-title {
@@ -1097,6 +1158,25 @@ async function onEvaluacionCreada() {
   font-weight: 600;
   color: #fff;
   margin: 0;
+}
+
+.cliente-modal__section-content {
+  overflow: hidden;
+  max-height: 80vh;
+  padding-top: 0.75rem;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+
+.cliente-modal__section-content--collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.cliente-modal__section:not(.cliente-modal__section--open) .cliente-modal__section-header {
+  margin-bottom: 0;
 }
 
 .cliente-modal__section-btn {

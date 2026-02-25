@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import BaseTable from '@/components/ui/BaseTable.vue'
@@ -13,6 +14,7 @@ import FormularioClienteModal from '@/components/coach/FormularioClienteModal.vu
 import ParametrosClienteModal from '@/components/coach/ParametrosClienteModal.vue'
 import CrearEvaluacionModal from '@/components/coach/CrearEvaluacionModal.vue'
 
+const router = useRouter()
 const { get, put, cargando } = useApi()
 const clientes = ref([])
 const meta = ref({ total: 0, por_pagina: 15, pagina_actual: 1, ultima_pagina: 1 })
@@ -38,6 +40,8 @@ const showFormularioClienteModal = ref(false)
 const showParametrosClienteModal = ref(false)
 const showCrearEvaluacionModal = ref(false)
 const clienteParaEvaluacion = ref(null)
+const expandedEvaluacion = ref(new Set())
+const expandedDieta = ref(new Set())
 
 const paginaActual = computed(() => meta.value.pagina_actual ?? 1)
 const totalPaginas = computed(() => meta.value.ultima_pagina ?? 1)
@@ -47,6 +51,34 @@ function nombreCompleto(c) {
   if (!c) return ''
   const partes = [c.nombre, c.apellido_paterno, c.apellido_materno].filter(Boolean)
   return partes.join(' ') || c.email || '—'
+}
+
+function estadoEvaluacionLabel(ev) {
+  if (!ev) return 'No tiene cita '
+  const e = (ev.estado || 'agendada').toLowerCase()
+  const map = { agendada: 'Agendada', confirmada: 'Confirmada', completada: 'Completada', reagendar: 'Reagendar', cancelada: 'Cancelada' }
+  return map[e] || (e.charAt(0).toUpperCase() + e.slice(1))
+}
+
+function metaBadgeSuscripcionVariant(c) {
+  if (!c?.suscripcion_activa) return 'danger'
+  const dias = c.suscripcion_activa.dias_restantes
+  if (dias != null && dias <= 7) return 'warning'
+  return 'success'
+}
+
+function metaBadgeDietaVariant(c) {
+  return c?.tiene_dieta ? 'success' : 'warning'
+}
+
+function metaBadgeEvaluacionVariant(c) {
+  const ev = c?.ultima_evaluacion
+  if (!ev) return 'danger'
+  const e = (ev.estado || 'agendada').toLowerCase()
+  if (e === 'reagendar') return 'reagendar'
+  if (e === 'confirmada') return 'success'
+  if (e === 'agendada') return 'warning'
+  return 'neutral'
 }
 
 function iniciales(c) {
@@ -108,6 +140,28 @@ function toggleSeleccion(clienteId) {
   } else {
     selectedClientes.value.add(clienteId)
   }
+}
+
+function toggleEvaluacionInfo(clienteId) {
+  const next = new Set(expandedEvaluacion.value)
+  if (next.has(clienteId)) next.delete(clienteId)
+  else next.add(clienteId)
+  expandedEvaluacion.value = next
+}
+
+function toggleDietaInfo(clienteId) {
+  const next = new Set(expandedDieta.value)
+  if (next.has(clienteId)) next.delete(clienteId)
+  else next.add(clienteId)
+  expandedDieta.value = next
+}
+
+function onDocumentClick(e) {
+  if (expandedEvaluacion.value.size === 0 && expandedDieta.value.size === 0) return
+  const wrap = e.target.closest('.usuarios__pop-wrap')
+  if (wrap) return
+  expandedEvaluacion.value = new Set()
+  expandedDieta.value = new Set()
 }
 
 function toggleSeleccionTodos() {
@@ -287,14 +341,34 @@ function onFormularioCompletado() {
   cargarClientes(paginaActual.value)
 }
 
-onMounted(() => {
-  cargarClientes(1)
+async function maybeAbrirClienteDesdePerfil() {
+  const openClienteId = history.state?.openClienteId
+  if (!openClienteId) return
+  history.replaceState({}, document.title, window.location.pathname + window.location.search)
+  modalDetalle.value = true
+  detalleCliente.value = null
+  cargandoDetalle.value = true
+  try {
+    const res = await get(`/coach/clientes/${openClienteId}`)
+    detalleCliente.value = res.datos ?? res.data ?? res
+  } catch (e) {
+    detalleCliente.value = { error: e.message || 'No se pudo cargar el detalle.' }
+  } finally {
+    cargandoDetalle.value = false
+  }
+}
+
+onMounted(async () => {
+  await cargarClientes(1)
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  document.addEventListener('click', onDocumentClick)
+  await maybeAbrirClienteDesdePerfil()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
+  document.removeEventListener('click', onDocumentClick)
 })
 
 watch([buscar, filtroActivo], () => cargarClientes(1))
@@ -414,7 +488,8 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
                   <th class="usuarios__th">Altura</th>
                   <th class="usuarios__th">Objetivo</th>
                   <th class="usuarios__th">Suscripción</th>
-                  <th class="usuarios__th">Tiene dieta</th>
+                  <th class="usuarios__th">Evaluación</th>
+                  <th class="usuarios__th">Dieta</th>
                   <th class="usuarios__th">Acciones</th>
                 </tr>
               </thead>
@@ -467,13 +542,78 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
                     </template>
                     <span v-else>—</span>
                   </td>
-                  <td class="usuarios__td">
-                    <span
-                      class="usuarios__badge"
-                      :class="{ 'usuarios__badge--active': c.tiene_dieta }"
-                    >
-                      {{ c.tiene_dieta ? 'Sí' : 'No' }}
-                    </span>
+                  <td class="usuarios__td usuarios__td--eval">
+                    <div class="usuarios__pop-wrap">
+                      <div class="usuarios__toggle-cell">
+                        <span
+                          class="usuarios__badge"
+                          :class="{ 'usuarios__badge--active': c.ultima_evaluacion }"
+                        >
+                          {{ estadoEvaluacionLabel(c.ultima_evaluacion) }}
+                        </span>
+                        <button
+                          v-if="c.ultima_evaluacion"
+                          type="button"
+                          class="usuarios__toggle-btn"
+                          :class="{ 'usuarios__toggle-btn--open': expandedEvaluacion.has(c.id) }"
+                          :aria-expanded="expandedEvaluacion.has(c.id)"
+                          :title="expandedEvaluacion.has(c.id) ? 'Ocultar detalle' : 'Ver detalle evaluación'"
+                          @click="toggleEvaluacionInfo(c.id)"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__toggle-icon">
+                            <path d="M6 9l6 6 6-6"/>
+                          </svg>
+                        </button>
+                      </div>
+                      <div
+                        v-if="c.ultima_evaluacion && expandedEvaluacion.has(c.id)"
+                        class="usuarios__popover"
+                        @click.stop
+                      >
+                        <div class="usuarios__popover-arrow" />
+                        <div class="usuarios__popover-inner">
+                          <div class="usuarios__expand-row"><strong>Fecha:</strong> {{ c.ultima_evaluacion.fecha || '—' }}</div>
+                          <div class="usuarios__expand-row"><strong>Hora:</strong> {{ c.ultima_evaluacion.hora || '—' }}</div>
+                          <div class="usuarios__expand-row"><strong>Estado:</strong> {{ estadoEvaluacionLabel(c.ultima_evaluacion) }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="usuarios__td usuarios__td--dieta">
+                    <div class="usuarios__pop-wrap">
+                      <div class="usuarios__toggle-cell">
+                        <span
+                          class="usuarios__badge"
+                          :class="{ 'usuarios__badge--active': c.tiene_dieta }"
+                        >
+                          {{ c.tiene_dieta ? 'Sí' : 'No' }}
+                        </span>
+                        <button
+                          v-if="c.ultima_dieta"
+                          type="button"
+                          class="usuarios__toggle-btn"
+                          :class="{ 'usuarios__toggle-btn--open': expandedDieta.has(c.id) }"
+                          :aria-expanded="expandedDieta.has(c.id)"
+                          :title="expandedDieta.has(c.id) ? 'Ocultar detalle' : 'Ver archivo y fecha'"
+                          @click="toggleDietaInfo(c.id)"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="usuarios__toggle-icon">
+                            <path d="M6 9l6 6 6-6"/>
+                          </svg>
+                        </button>
+                      </div>
+                      <div
+                        v-if="c.ultima_dieta && expandedDieta.has(c.id)"
+                        class="usuarios__popover"
+                        @click.stop
+                      >
+                        <div class="usuarios__popover-arrow" />
+                        <div class="usuarios__popover-inner">
+                          <div class="usuarios__expand-row"><strong>Archivo:</strong> {{ c.ultima_dieta.nombre_archivo || '—' }}</div>
+                          <div class="usuarios__expand-row"><strong>Subido:</strong> {{ c.ultima_dieta.created_at || '—' }}</div>
+                        </div>
+                      </div>
+                    </div>
                   </td>
                   <td class="usuarios__td">
                     <button
@@ -525,17 +665,39 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
               @keydown.enter="abrirDetalle(c)"
               @keydown.space.prevent="abrirDetalle(c)"
             >
-              <div class="usuarios__avatar">{{ iniciales(c) }}</div>
-              <div class="usuarios__info">
-                <span class="usuarios__nombre">{{ nombreCompleto(c) }}</span>
-                <span class="usuarios__email">{{ c.email || '—' }}</span>
+              <div class="usuarios__link-top">
+                <div class="usuarios__avatar">{{ iniciales(c) }}</div>
+                <div class="usuarios__info">
+                  <span class="usuarios__nombre">{{ nombreCompleto(c) }}</span>
+                  <span class="usuarios__email">{{ c.email || '—' }}</span>
+                </div>
+                <span
+                  class="usuarios__badge"
+                  :class="{ 'usuarios__badge--active': c.activo }"
+                >
+                  {{ c.activo ? 'Activo' : 'Inactivo' }}
+                </span>
               </div>
-              <span
-                class="usuarios__badge"
-                :class="{ 'usuarios__badge--active': c.activo }"
-              >
-                {{ c.activo ? 'Activo' : 'Inactivo' }}
-              </span>
+              <div class="usuarios__link-meta">
+                <span
+                  class="usuarios__meta-badge"
+                  :class="`usuarios__meta-badge--${metaBadgeSuscripcionVariant(c)}`"
+                >
+                  {{ c.suscripcion_activa?.fecha_fin ? `Vence ${c.suscripcion_activa.fecha_fin}` : 'Sin suscripción' }}
+                </span>
+                <span
+                  class="usuarios__meta-badge"
+                  :class="`usuarios__meta-badge--${metaBadgeDietaVariant(c)}`"
+                >
+                  {{ c.tiene_dieta ? 'Con dieta' : 'Sin dieta' }}
+                </span>
+                <span
+                  class="usuarios__meta-badge"
+                  :class="`usuarios__meta-badge--${metaBadgeEvaluacionVariant(c)}`"
+                >
+                  {{ estadoEvaluacionLabel(c.ultima_evaluacion) }}
+                </span>
+              </div>
             </div>
           </template>
         </BaseTable>
@@ -846,8 +1008,9 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
 
 .usuarios__link {
   display: flex;
-  align-items: center;
-  gap: 0.875rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
   padding: 0.875rem 1rem;
   text-decoration: none;
   color: inherit;
@@ -860,6 +1023,57 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
 
 .usuarios__link--clickable {
   cursor: pointer;
+}
+
+.usuarios__link-top {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.usuarios__link-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.usuarios__meta-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.usuarios__meta-badge--success {
+  color: var(--color-success-500);
+  background: color-mix(in srgb, var(--color-success-500) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success-500) 40%, transparent);
+}
+
+.usuarios__meta-badge--warning {
+  color: var(--color-warning-500);
+  background: color-mix(in srgb, var(--color-warning-500) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning-500) 40%, transparent);
+}
+
+.usuarios__meta-badge--danger {
+  color: var(--color-danger-500);
+  background: color-mix(in srgb, var(--color-danger-500) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger-500) 40%, transparent);
+}
+
+.usuarios__meta-badge--reagendar {
+  color: #A855F7;
+  background: color-mix(in srgb, #A855F7 18%, transparent);
+  border: 1px solid color-mix(in srgb, #A855F7 40%, transparent);
+}
+
+.usuarios__meta-badge--neutral {
+  color: var(--color-label-secondary);
+  background: color-mix(in srgb, var(--color-label-secondary) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-label-secondary) 35%, transparent);
 }
 
 .usuarios__avatar {
@@ -1006,6 +1220,96 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
 .usuarios__td-hint {
   color: #697586;
   font-size: 0.75rem;
+}
+
+.usuarios__toggle-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.usuarios__toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #a0a0a0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.2s, transform 0.2s;
+}
+
+.usuarios__toggle-btn:hover {
+  color: #fff;
+}
+
+.usuarios__toggle-btn .usuarios__toggle-icon {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.2s;
+}
+
+.usuarios__toggle-btn--open .usuarios__toggle-icon {
+  transform: rotate(180deg);
+}
+
+.usuarios__td--eval,
+.usuarios__td--dieta {
+  vertical-align: middle;
+}
+
+.usuarios__pop-wrap {
+  position: relative;
+}
+
+.usuarios__popover {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 50;
+  min-width: 200px;
+  padding: 0.75rem 1rem;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  font-size: 0.75rem;
+  color: #a0a0a0;
+}
+
+.usuarios__popover-arrow {
+  position: absolute;
+  left: 1rem;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: #1e1e1e;
+  border-right: 1px solid #333;
+  border-bottom: 1px solid #333;
+  transform: rotate(45deg);
+}
+
+.usuarios__popover-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.usuarios__expand-row {
+  margin-bottom: 0.35rem;
+}
+
+.usuarios__expand-row:last-child {
+  margin-bottom: 0;
+}
+
+.usuarios__expand-row strong {
+  color: #e0e0e0;
+  margin-right: 0.35rem;
 }
 
 .usuarios__loading--table {

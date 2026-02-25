@@ -1,10 +1,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useAuth } from '@/composables/useAuth'
 import BaseSegmentedControl from '@/components/ui/BaseSegmentedControl.vue'
+import PerfilStatModal from '@/components/coach/PerfilStatModal.vue'
 
+const router = useRouter()
 const { get, post, put, cargando } = useApi()
 const { logout } = useAuth()
 const perfil = ref(null)
@@ -29,11 +31,52 @@ const stats = computed(() => {
     clientesTotal: dashboard.value.clientes?.total ?? 0,
     clientesActivos: dashboard.value.clientes?.activos ?? 0,
     clientesConDieta: dashboard.value.clientes?.con_dieta ?? 0,
+    clientesSinDieta: dashboard.value.clientes?.sin_dieta ?? 0,
     clientesVencimientoProximo: dashboard.value.clientes?.vencimiento_proximo ?? 0,
     suscripcionesActivas: dashboard.value.suscripciones_activas ?? 0,
-    ingresosMes: dashboard.value.ingresos_mes ?? 0
+    ingresosMes: dashboard.value.ingresos_mes ?? 0,
+    citasAgendadas: dashboard.value.citas_agendadas ?? 0,
+    citasReagendadas: dashboard.value.citas_reagendadas ?? 0
   }
 })
+
+const statModalActiva = ref(null)
+const linkRegistroAbierto = ref(false)
+const citasHoy = ref([])
+const cargandoCitasHoy = ref(false)
+
+function toggleLinkRegistro() {
+  linkRegistroAbierto.value = !linkRegistroAbierto.value
+}
+
+const fechaHoyFormateada = computed(() => {
+  const d = new Date()
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
+})
+
+function horaSolo(hora) {
+  if (!hora) return '—'
+  const s = String(hora)
+  const match = s.match(/^(\d{1,2}):(\d{2})/)
+  return match ? `${match[1].padStart(2, '0')}:${match[2]}` : s
+}
+
+async function cargarCitasHoy() {
+  cargandoCitasHoy.value = true
+  citasHoy.value = []
+  try {
+    const hoy = new Date().toISOString().slice(0, 10)
+    const res = await get(`/coach/citas-agendadas?fecha=${hoy}`)
+    citasHoy.value = res.datos ?? res.data ?? []
+  } catch {
+    citasHoy.value = []
+  } finally {
+    cargandoCitasHoy.value = false
+  }
+}
 
 function avatarUrl(path) {
   if (!path) return null
@@ -63,6 +106,7 @@ onMounted(async () => {
     perfil.value = resPerfil.datos
     dashboard.value = resDashboard?.datos ?? null
     linkActivo.value = perfil.value?.link_registro_activo ?? false
+    await cargarCitasHoy()
   } catch (e) {
     error.value = e.message || 'No se pudo cargar el perfil.'
   }
@@ -103,6 +147,14 @@ function copiarLink() {
     }, 2000)
   }
 }
+
+function irACliente(clienteId) {
+  statModalActiva.value = null
+  router.push({
+    name: 'CoachUsuarios',
+    state: { openClienteId: clienteId }
+  })
+}
 </script>
 
 <template>
@@ -118,7 +170,7 @@ function copiarLink() {
 
     <!-- Contenido -->
     <template v-else-if="perfil">
-      <!-- Header card -->
+      <!-- Header card (info del coach + sobre mí) -->
       <div class="perfil__header-card">
         <div class="perfil__avatar-wrap">
           <img
@@ -132,69 +184,108 @@ function copiarLink() {
         <div class="perfil__header-info">
           <h1 class="perfil__name">{{ perfil.nombre || 'Coach' }}</h1>
           <p class="perfil__email">{{ perfil.email }}</p>
+          <p v-if="perfil.bio" class="perfil__header-bio">{{ perfil.bio }}</p>
         </div>
         <span class="perfil__status" :class="{ 'perfil__status--active': perfil.activo }">
           {{ perfil.activo ? 'Activo' : 'Inactivo' }}
         </span>
       </div>
 
-      <!-- Bio -->
-      <section class="perfil__section" v-if="perfil.bio">
-        <div class="perfil__section-header">
-          <h2 class="perfil__section-title">Sobre mí</h2>
-        </div>
-        <div class="perfil__bio-card">
-          <p class="perfil__bio-text">{{ perfil.bio }}</p>
-        </div>
-      </section>
-
-      <!-- Link de Registro - Siempre visible -->
+      <!-- Citas de hoy (agendadas y confirmadas) -->
       <section class="perfil__section">
         <div class="perfil__section-header">
-          <h2 class="perfil__section-title">Link de Registro</h2>
+          <h2 class="perfil__section-title">Citas de hoy · {{ fechaHoyFormateada }}</h2>
         </div>
-        <div class="perfil__link-registro">
-          <p class="perfil__link-registro-desc">
-            Comparte este link para que nuevos clientes se registren
-          </p>
-          
-          <div v-if="perfil.link_registro" class="perfil__link-registro-container">
-            <input
-              type="text"
-              :value="perfil.link_registro"
-              readonly
-              class="perfil__link-input"
-              ref="linkInput"
-            />
-            <button
-              @click="copiarLink"
-              class="perfil__link-btn"
-            >
-              {{ linkCopiado ? 'Copiado' : 'Copiar' }}
-            </button>
-          </div>
-          
-          <div v-else class="perfil__link-registro-empty">
-            <p class="perfil__link-registro-empty-text">No tienes un link de registro generado</p>
-          </div>
-          
-          <div class="perfil__link-registro-actions">
-            <button
-              @click="generarLink"
-              class="perfil__btn perfil__btn--outline"
-              :disabled="generando"
-            >
-              {{ perfil.link_registro ? 'Regenerar Link' : 'Generar Link' }}
-            </button>
+        <div v-if="cargandoCitasHoy" class="perfil__citas-loading">
+          <span class="perfil__citas-loading-text">Cargando…</span>
+        </div>
+        <div v-else-if="citasHoy.length === 0" class="perfil__citas-empty">
+          <p class="perfil__citas-empty-text">No tienes citas agendadas o confirmadas para hoy.</p>
+        </div>
+        <ul v-else class="perfil__citas-list">
+          <li
+            v-for="cita in citasHoy"
+            :key="cita.id"
+            class="perfil__cita-card"
+            role="button"
+            tabindex="0"
+            @click="irACliente(cita.cliente_id)"
+            @keydown.enter.prevent="irACliente(cita.cliente_id)"
+            @keydown.space.prevent="irACliente(cita.cliente_id)"
+          >
+            <span class="perfil__cita-nombre">{{ cita.cliente_nombre }}</span>
+            <span class="perfil__cita-hora">{{ horaSolo(cita.hora) }}</span>
+            <span class="perfil__cita-estado" :class="`perfil__cita-estado--${cita.estado}`">{{ cita.estado === 'confirmada' ? 'Confirmada' : 'Agendada' }}</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Link de Registro (acordeón) -->
+      <section class="perfil__section perfil__section--accordion" :class="{ 'perfil__section--open': linkRegistroAbierto }">
+        <div
+          class="perfil__section-header perfil__section-header--clickable"
+          role="button"
+          tabindex="0"
+          :aria-expanded="linkRegistroAbierto"
+          @click="toggleLinkRegistro"
+          @keydown.enter.prevent="toggleLinkRegistro"
+          @keydown.space.prevent="toggleLinkRegistro"
+        >
+          <h2 class="perfil__section-title">Link de Registro</h2>
+          <svg
+            class="perfil__section-chevron"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+        <div class="perfil__accordion-content" :class="{ 'perfil__accordion-content--collapsed': !linkRegistroAbierto }">
+          <div class="perfil__link-registro">
+            <p class="perfil__link-registro-desc">
+              Comparte este link para que nuevos clientes se registren
+            </p>
             
-            <label v-if="perfil.link_registro" class="perfil__link-toggle">
+            <div v-if="perfil.link_registro" class="perfil__link-registro-container">
               <input
-                type="checkbox"
-                v-model="linkActivo"
-                @change="toggleLink"
+                type="text"
+                :value="perfil.link_registro"
+                readonly
+                class="perfil__link-input"
+                ref="linkInput"
               />
-              <span>Link activo</span>
-            </label>
+              <button
+                @click="copiarLink"
+                class="perfil__link-btn"
+              >
+                {{ linkCopiado ? 'Copiado' : 'Copiar' }}
+              </button>
+            </div>
+            
+            <div v-else class="perfil__link-registro-empty">
+              <p class="perfil__link-registro-empty-text">No tienes un link de registro generado</p>
+            </div>
+            
+            <div class="perfil__link-registro-actions">
+              <button
+                @click="generarLink"
+                class="perfil__btn perfil__btn--outline"
+                :disabled="generando"
+              >
+                {{ perfil.link_registro ? 'Regenerar Link' : 'Generar Link' }}
+              </button>
+              
+              <label v-if="perfil.link_registro" class="perfil__link-toggle">
+                <input
+                  type="checkbox"
+                  v-model="linkActivo"
+                  @change="toggleLink"
+                />
+                <span>Link activo</span>
+              </label>
+            </div>
           </div>
         </div>
       </section>
@@ -211,10 +302,16 @@ function copiarLink() {
       <section class="perfil__section" v-if="tabSeleccionado === 'estadisticas'">
         <div class="perfil__section-header">
           <h2 class="perfil__section-title">Estadísticas</h2>
-          <RouterLink v-if="stats" to="/coach" class="perfil__see-all">Ver dashboard</RouterLink>
         </div>
         <div class="perfil__details" v-if="stats">
-          <div class="perfil__detail">
+          <div
+            class="perfil__detail perfil__detail--clickable"
+            role="button"
+            tabindex="0"
+            @click="statModalActiva = 'clientes'"
+            @keydown.enter.prevent="statModalActiva = 'clientes'"
+            @keydown.space.prevent="statModalActiva = 'clientes'"
+          >
             <div class="perfil__detail-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -225,7 +322,14 @@ function copiarLink() {
             <span class="perfil__detail-value">{{ stats.clientesTotal }}</span>
             <span class="perfil__detail-label">Clientes</span>
           </div>
-          <div class="perfil__detail">
+          <div
+            class="perfil__detail perfil__detail--clickable"
+            role="button"
+            tabindex="0"
+            @click="statModalActiva = 'activos'"
+            @keydown.enter.prevent="statModalActiva = 'activos'"
+            @keydown.space.prevent="statModalActiva = 'activos'"
+          >
             <div class="perfil__detail-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -235,19 +339,69 @@ function copiarLink() {
             <span class="perfil__detail-value">{{ stats.clientesActivos }}</span>
             <span class="perfil__detail-label">Activos</span>
           </div>
-          <div class="perfil__detail">
-            <div class="perfil__detail-icon">
+          <div
+            class="perfil__detail perfil__detail--clickable"
+            role="button"
+            tabindex="0"
+            @click="statModalActiva = 'con_dieta'"
+            @keydown.enter.prevent="statModalActiva = 'con_dieta'"
+            @keydown.space.prevent="statModalActiva = 'con_dieta'"
+          >
+            <div class="perfil__detail-icon perfil__detail-icon--success">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-                <line x1="6" y1="1" x2="6" y2="4"/>
-                <line x1="10" y1="1" x2="10" y2="4"/>
-                <line x1="14" y1="1" x2="14" y2="4"/>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
               </svg>
             </div>
             <span class="perfil__detail-value">{{ stats.clientesConDieta }}</span>
             <span class="perfil__detail-label">Con dieta</span>
           </div>
-          <div class="perfil__detail">
+          <div
+            class="perfil__detail perfil__detail--clickable"
+            role="button"
+            tabindex="0"
+            @click="statModalActiva = 'sin_dieta'"
+            @keydown.enter.prevent="statModalActiva = 'sin_dieta'"
+            @keydown.space.prevent="statModalActiva = 'sin_dieta'"
+          >
+            <div class="perfil__detail-icon perfil__detail-icon--warning">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+            </div>
+            <span class="perfil__detail-value">{{ stats.clientesSinDieta }}</span>
+            <span class="perfil__detail-label">Sin dieta</span>
+          </div>
+          <div
+            class="perfil__detail perfil__detail--clickable"
+            role="button"
+            tabindex="0"
+            @click="statModalActiva = 'suscripciones'"
+            @keydown.enter.prevent="statModalActiva = 'suscripciones'"
+            @keydown.space.prevent="statModalActiva = 'suscripciones'"
+          >
+            <div class="perfil__detail-icon perfil__detail-icon--success">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+            </div>
+            <span class="perfil__detail-value">{{ stats.suscripcionesActivas }}</span>
+            <span class="perfil__detail-label">Suscripciones</span>
+          </div>
+          <div
+            class="perfil__detail perfil__detail--clickable"
+            role="button"
+            tabindex="0"
+            @click="statModalActiva = 'vence_pronto'"
+            @keydown.enter.prevent="statModalActiva = 'vence_pronto'"
+            @keydown.space.prevent="statModalActiva = 'vence_pronto'"
+          >
             <div class="perfil__detail-icon" :class="{ 'perfil__detail-icon--warning': stats.clientesVencimientoProximo > 0 }">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <circle cx="12" cy="12" r="10"/>
@@ -255,19 +409,53 @@ function copiarLink() {
               </svg>
             </div>
             <span class="perfil__detail-value">{{ stats.clientesVencimientoProximo }}</span>
-            <span class="perfil__detail-label">Vence pronto (30 d)</span>
+            <span class="perfil__detail-label">Vence pronto</span>
           </div>
-          <div class="perfil__detail">
+          <div
+            class="perfil__detail perfil__detail--clickable"
+            role="button"
+            tabindex="0"
+            @click="statModalActiva = 'citas_agendadas'"
+            @keydown.enter.prevent="statModalActiva = 'citas_agendadas'"
+            @keydown.space.prevent="statModalActiva = 'citas_agendadas'"
+          >
             <div class="perfil__detail-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </div>
+            <span class="perfil__detail-value">{{ stats.citasAgendadas }}</span>
+            <span class="perfil__detail-label">Citas agendadas</span>
+          </div>
+          <div
+            class="perfil__detail perfil__detail--clickable"
+            role="button"
+            tabindex="0"
+            @click="statModalActiva = 'citas_reagendadas'"
+            @keydown.enter.prevent="statModalActiva = 'citas_reagendadas'"
+            @keydown.space.prevent="statModalActiva = 'citas_reagendadas'"
+          >
+            <div class="perfil__detail-icon perfil__detail-icon--reagendar">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <rect x="3" y="4" width="18" height="18" rx="2"/>
                 <path d="M16 2v4M8 2v4M3 10h18"/>
+                <path d="M8 14h.01M12 14h.01M16 14h.01"/>
               </svg>
             </div>
-            <span class="perfil__detail-value">{{ stats.suscripcionesActivas }}</span>
-            <span class="perfil__detail-label">Suscripciones</span>
+            <span class="perfil__detail-value">{{ stats.citasReagendadas }}</span>
+            <span class="perfil__detail-label">Citas reagendadas</span>
           </div>
-          <div class="perfil__detail">
+          <div
+            class="perfil__detail perfil__detail--clickable perfil__detail--full"
+            role="button"
+            tabindex="0"
+            @click="statModalActiva = 'ingresos_mes'"
+            @keydown.enter.prevent="statModalActiva = 'ingresos_mes'"
+            @keydown.space.prevent="statModalActiva = 'ingresos_mes'"
+          >
             <div class="perfil__detail-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <line x1="12" y1="1" x2="12" y2="23"/>
@@ -296,9 +484,6 @@ function copiarLink() {
 
       <!-- Actions -->
       <div class="perfil__actions">
-        <RouterLink to="/coach" class="perfil__btn perfil__btn--outline">
-          Ir al dashboard
-        </RouterLink>
         <button
           type="button"
           class="perfil__btn perfil__btn--danger"
@@ -309,6 +494,14 @@ function copiarLink() {
           <span v-else>Cerrar sesión</span>
         </button>
       </div>
+
+      <!-- Modal detalle estadística (bottom sheet con lista y navegación) -->
+      <PerfilStatModal
+        :stat-key="statModalActiva"
+        :stats="stats"
+        @close="statModalActiva = null"
+        @select-cliente="irACliente"
+      />
     </template>
 
     <!-- Loading -->
@@ -373,7 +566,7 @@ function copiarLink() {
 /* Header card */
 .perfil__header-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
   background: #161616;
   border-radius: 16px;
@@ -427,6 +620,14 @@ function copiarLink() {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.perfil__header-bio {
+  font-size: 0.8125rem;
+  color: var(--color-label-secondary);
+  line-height: 1.45;
+  margin: 0.5rem 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .perfil__status {
   font-size: 0.6875rem;
   font-weight: 500;
@@ -440,6 +641,73 @@ function copiarLink() {
 .perfil__status--active {
   background: rgba(0, 210, 97, 0.15);
   color: #00D261;
+}
+
+/* Citas de hoy */
+.perfil__citas-loading,
+.perfil__citas-empty {
+  padding: 1rem;
+  text-align: center;
+}
+.perfil__citas-loading-text {
+  font-size: 0.875rem;
+  color: var(--color-label-secondary);
+}
+.perfil__citas-empty-text {
+  font-size: 0.875rem;
+  color: var(--color-label-secondary);
+  margin: 0;
+}
+.perfil__citas-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.perfil__cita-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #1e1e1e;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.perfil__cita-card:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.perfil__cita-hora {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-success-500);
+  flex-shrink: 0;
+  min-width: 2.5rem;
+}
+.perfil__cita-nombre {
+  font-size: 0.875rem;
+  color: var(--color-label-tertiary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.perfil__cita-estado {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  text-transform: capitalize;
+}
+.perfil__cita-estado--agendada {
+  background: color-mix(in srgb, var(--color-warning-500) 18%, transparent);
+  color: var(--color-warning-500);
+}
+.perfil__cita-estado--confirmada {
+  background: color-mix(in srgb, var(--color-success-500) 18%, transparent);
+  color: var(--color-success-500);
 }
 
 /* Section */
@@ -458,32 +726,45 @@ function copiarLink() {
   justify-content: space-between;
   margin-bottom: 0.75rem;
 }
+.perfil__section-header--clickable {
+  cursor: pointer;
+  margin-bottom: 0;
+  padding: 0.125rem 0;
+  user-select: none;
+}
+.perfil__section--accordion .perfil__section-header--clickable {
+  margin-bottom: 0;
+}
+.perfil__section--accordion .perfil__section-header--clickable + .perfil__accordion-content {
+  margin-top: 0;
+}
+.perfil__section--accordion.perfil__section--open .perfil__section-header--clickable + .perfil__accordion-content {
+  margin-top: 0.75rem;
+}
+.perfil__section-chevron {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  color: var(--color-label-secondary);
+  transition: transform 0.2s ease;
+}
+.perfil__section--accordion.perfil__section--open .perfil__section-chevron {
+  transform: rotate(90deg);
+}
+.perfil__accordion-content {
+  overflow: hidden;
+  max-height: 800px;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+.perfil__accordion-content--collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0 !important;
+}
 .perfil__section-title {
   font-size: 0.9375rem;
   font-weight: 600;
   color: #fff;
-  margin: 0;
-}
-.perfil__see-all {
-  font-size: 0.75rem;
-  color: #00D261;
-  cursor: pointer;
-  text-decoration: none;
-}
-.perfil__see-all:hover {
-  text-decoration: underline;
-}
-
-/* Bio */
-.perfil__bio-card {
-  background: #1e1e1e;
-  border-radius: 12px;
-  padding: 1rem;
-}
-.perfil__bio-text {
-  font-size: 0.875rem;
-  color: #a0a0a0;
-  line-height: 1.5;
   margin: 0;
 }
 
@@ -511,8 +792,17 @@ function copiarLink() {
   width: 100%;
   height: 100%;
 }
+.perfil__detail-icon--success {
+  color: var(--color-success-500);
+}
 .perfil__detail-icon--warning {
-  color: #FF9900 !important;
+  color: var(--color-warning-500);
+}
+.perfil__detail-icon--reagendar {
+  color: #A855F7;
+}
+.perfil__detail--full {
+  grid-column: 1 / -1;
 }
 .perfil__detail-value {
   font-size: 1rem;
@@ -525,6 +815,17 @@ function copiarLink() {
   color: #697586;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+.perfil__detail--clickable {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.perfil__detail--clickable:hover {
+  background: #252525;
+}
+.perfil__detail--clickable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 210, 97, 0.4);
 }
 
 .perfil__otros-placeholder {
