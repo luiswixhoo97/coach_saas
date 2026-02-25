@@ -63,6 +63,36 @@ class ClienteResource extends JsonResource
                     return DietaClienteResource::collection($suscripcion->dietas);
                 }
             ),
+            'ultima_evaluacion' => $this->when(
+                $this->relationLoaded('suscripciones'),
+                function () {
+                    $evaluaciones = $this->suscripciones->flatMap->evaluaciones;
+                    if ($evaluaciones->isEmpty()) {
+                        return null;
+                    }
+                    $ultima = $evaluaciones->sortByDesc('fecha')->first();
+                    return [
+                        'id' => $ultima->id,
+                        'fecha' => $ultima->fecha?->format('Y-m-d'),
+                        'hora' => $ultima->hora instanceof \Carbon\Carbon ? $ultima->hora->format('H:i') : $ultima->hora,
+                        'estado' => $ultima->estado ?? 'agendada',
+                    ];
+                }
+            ),
+            'ultima_dieta' => $this->when(
+                $this->relationLoaded('suscripciones'),
+                function () {
+                    $dietas = $this->suscripciones->flatMap->dietas;
+                    if ($dietas->isEmpty()) {
+                        return null;
+                    }
+                    $ultima = $dietas->sortByDesc('created_at')->first();
+                    return [
+                        'nombre_archivo' => $ultima->archivo ? basename($ultima->archivo) : null,
+                        'created_at' => $ultima->created_at->format('Y-m-d H:i'),
+                    ];
+                }
+            ),
             'created_at' => $this->created_at->format('Y-m-d'),
         ];
     }

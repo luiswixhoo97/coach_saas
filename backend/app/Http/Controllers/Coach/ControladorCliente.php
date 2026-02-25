@@ -33,11 +33,27 @@ class ControladorCliente extends Controller
     {
         $coach = $this->getCoach($request);
 
-        $query = Cliente::with(['usuario', 'suscripciones.plan'])
+        $query = Cliente::with(['usuario', 'suscripciones.plan', 'suscripciones.evaluaciones', 'suscripciones.dietas'])
             ->where('creado_por', $coach->id);
 
         if ($request->has('activo')) {
             $query->where('activo', $request->boolean('activo'));
+        }
+
+        if ($request->boolean('con_dieta')) {
+            $query->whereHas('suscripciones', fn($q) => $q->whereHas('dietas', fn($dq) => $dq->where('activo', true)));
+        }
+
+        if ($request->boolean('sin_dieta')) {
+            $query->whereDoesntHave('suscripciones', fn($q) => $q->whereHas('dietas', fn($dq) => $dq->where('activo', true)));
+        }
+
+        if ($request->boolean('vencimiento_proximo')) {
+            $query->whereHas('suscripciones', fn($q) => $q->venceProximo(30));
+        }
+
+        if ($request->boolean('suscripcion_activa')) {
+            $query->whereHas('suscripciones', fn($q) => $q->where('estado', 'activa'));
         }
 
         if ($request->has('buscar') && trim($request->buscar) !== '') {
@@ -50,7 +66,8 @@ class ControladorCliente extends Controller
             });
         }
 
-        $clientes = $query->orderBy('created_at', 'desc')->paginate(15);
+        $perPage = min((int) $request->get('per_page', 15), 100);
+        $clientes = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return new PaginacionCollection($clientes, ClienteResource::class);
     }

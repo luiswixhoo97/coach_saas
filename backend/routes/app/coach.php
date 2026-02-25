@@ -45,6 +45,9 @@ Route::prefix('coach')
     Route::get('/dashboard', [ControladorPerfil::class, 'dashboard'])
         ->name('coach.dashboard');
     
+    Route::get('/citas-agendadas', [ControladorPerfil::class, 'citasAgendadas'])
+        ->name('coach.citas-agendadas');
+    
     Route::post('/perfil/generar-link-registro', [ControladorPerfil::class, 'generarLinkRegistro'])
         ->name('coach.perfil.generar-link-registro');
     

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Coach;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\DietaCliente;
+use App\Models\Evaluacion;
 use App\Models\Pago;
 use App\Models\Suscripcion;
 use Illuminate\Http\JsonResponse;
@@ -155,9 +156,21 @@ class ControladorPerfil extends Controller
 
         $clientesConDieta = DietaCliente::clientesConDietaCount($coach->id);
 
+        $clientesSinDieta = Cliente::where('creado_por', $coach->id)
+            ->whereDoesntHave('suscripciones', fn($q) => $q->whereHas('dietas', fn($dq) => $dq->where('activo', true)))
+            ->count();
+
         $clientesVencimientoProximo = Cliente::delCoach($coach->id)
             ->whereHas('suscripciones', fn($q) => $q->venceProximo(30))
             ->count();
+
+        $citasAgendadas = Evaluacion::whereHas('suscripcion.cliente', fn($q) =>
+            $q->where('creado_por', $coach->id)
+        )->whereIn('estado', ['agendada', 'confirmada', 'reagendar'])->count();
+
+        $citasReagendadas = Evaluacion::whereHas('suscripcion.cliente', fn($q) =>
+            $q->where('creado_por', $coach->id)
+        )->where('estado', 'reagendar')->count();
 
         return response()->json([
             'datos' => [
@@ -165,12 +178,61 @@ class ControladorPerfil extends Controller
                     'activos' => $clientesActivos,
                     'total' => $clientesTotal,
                     'con_dieta' => $clientesConDieta,
+                    'sin_dieta' => $clientesSinDieta,
                     'vencimiento_proximo' => $clientesVencimientoProximo,
                 ],
                 'suscripciones_activas' => $suscripcionesActivas,
                 'ingresos_mes' => $ingresosMes,
+                'citas_agendadas' => $citasAgendadas,
+                'citas_reagendadas' => $citasReagendadas,
             ],
         ]);
+    }
+
+    /**
+     * Listar citas agendadas (evaluaciones pendientes) para el modal de estadísticas.
+     */
+    public function citasAgendadas(Request $request): JsonResponse
+    {
+        $coach = $request->user()->coach;
+
+        $query = Evaluacion::with(['suscripcion.cliente.usuario'])
+            ->whereHas('suscripcion.cliente', fn($q) => $q->where('creado_por', $coach->id));
+
+        if ($request->filled('fecha')) {
+            $query->whereDate('fecha', $request->fecha);
+            if (!$request->filled('estado')) {
+                $query->whereIn('estado', ['agendada', 'confirmada']);
+            }
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        } elseif (!$request->filled('fecha')) {
+            $query->whereIn('estado', ['agendada', 'confirmada', 'reagendar']);
+        }
+
+        $evaluaciones = $query->orderBy('fecha')->orderBy('hora')->limit(100)->get();
+
+        $datos = $evaluaciones->map(function ($ev) {
+            $cliente = $ev->suscripcion->cliente ?? null;
+            $nombre = $cliente
+                ? trim(($cliente->nombre ?? '') . ' ' . ($cliente->apellido_paterno ?? '') . ' ' . ($cliente->apellido_materno ?? ''))
+                : '—';
+            $hora = $ev->hora instanceof \Carbon\Carbon
+                ? $ev->hora->format('H:i')
+                : (is_string($ev->hora) ? $ev->hora : '—');
+            return [
+                'id' => $ev->id,
+                'fecha' => $ev->fecha?->format('Y-m-d'),
+                'hora' => $hora,
+                'estado' => $ev->estado ?? 'agendada',
+                'cliente_id' => $cliente?->id,
+                'cliente_nombre' => $nombre,
+            ];
+        });
+
+        return response()->json(['datos' => $datos->values()->all()]);
     }
 
     /**
