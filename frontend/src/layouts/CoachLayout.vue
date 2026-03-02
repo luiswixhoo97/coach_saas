@@ -1,14 +1,24 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { useAuth } from '@/composables/useAuth'
+import { useApi } from '@/composables/useApi'
 
 const route = useRoute()
+const { logout } = useAuth()
+const { get } = useApi()
 const sidebarOpen = ref(false)
 const isDesktop = ref(false)
 const configSubmenuOpen = ref(false)
+const masMenuWrapperRef = ref(null)
+const mensajesNoLeidos = ref(0)
 
 const MOBILE_BREAKPOINT = 768
+
+const masMenuActivo = computed(() =>
+  isActive('CoachFormularios') || isActive('CoachParametros') || isActive('CoachEjercicios')
+)
 
 function checkDesktop() {
   isDesktop.value = window.innerWidth >= MOBILE_BREAKPOINT
@@ -31,13 +41,44 @@ function closeConfigSubmenu() {
   configSubmenuOpen.value = false
 }
 
+async function handleLogout() {
+  closeConfigSubmenu()
+  await logout()
+}
+
+function onDocumentClick(e) {
+  if (!configSubmenuOpen.value || isDesktop.value) return
+  const wrapper = masMenuWrapperRef.value
+  if (wrapper && !wrapper.contains(e.target)) {
+    closeConfigSubmenu()
+  }
+}
+
+watch(() => route.name, () => {
+  closeConfigSubmenu()
+  cargarMensajesNoLeidos()
+})
+
+async function cargarMensajesNoLeidos() {
+  try {
+    const res = await get('/coach/chats/mensajes-no-leidos')
+    const total = res?.datos?.total ?? res?.data?.total ?? 0
+    mensajesNoLeidos.value = typeof total === 'number' ? total : 0
+  } catch {
+    mensajesNoLeidos.value = 0
+  }
+}
+
 onMounted(() => {
   checkDesktop()
   window.addEventListener('resize', checkDesktop)
+  document.addEventListener('click', onDocumentClick)
+  cargarMensajesNoLeidos()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkDesktop)
+  document.removeEventListener('click', onDocumentClick)
 })
 
 // Ocultar bottomnav y topbar en móvil cuando estamos dentro de un chat (WhatsApp-like)
@@ -160,6 +201,7 @@ const showTopbar = computed(() => {
               </svg>
             </div>
             <span class="coach-layout__sidebar-link-text">Chat</span>
+            <span v-if="mensajesNoLeidos > 0" class="coach-layout__chat-badge" :aria-label="`${mensajesNoLeidos} mensajes no leídos`">{{ mensajesNoLeidos > 99 ? '99+' : mensajesNoLeidos }}</span>
           </RouterLink>
           <RouterLink
             :to="{ name: 'CoachFormularios' }"
@@ -190,6 +232,22 @@ const showTopbar = computed(() => {
               </svg>
             </div>
             <span class="coach-layout__sidebar-link-text">Parámetros</span>
+          </RouterLink>
+          <RouterLink
+            :to="{ name: 'CoachConfiguracion' }"
+            class="coach-layout__sidebar-link"
+            :class="{ 'coach-layout__sidebar-link--active': isActive('CoachConfiguracion') }"
+            @click="closeSidebar"
+          >
+            <div class="coach-layout__sidebar-link-bg"></div>
+            <div class="coach-layout__sidebar-link-indicator"></div>
+            <div class="coach-layout__sidebar-icon-wrapper">
+              <svg class="coach-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 4h9l3 3v13H6z"/>
+                <path d="M9 8h6M9 12h6M9 16h3"/>
+              </svg>
+            </div>
+            <span class="coach-layout__sidebar-link-text">Configuración</span>
           </RouterLink>
         </nav>
       </div>
@@ -263,26 +321,37 @@ const showTopbar = computed(() => {
           </RouterLink>
           <RouterLink
             :to="{ name: 'CoachChat' }"
-            class="coach-layout__nav-item"
+            class="coach-layout__nav-item coach-layout__nav-item--chat"
             :class="{ 'coach-layout__nav-item--active': isActive('CoachChat') || isActive('CoachChatDetalle') }"
           >
-            <svg class="coach-layout__nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
+            <span class="coach-layout__nav-item-chat-wrap">
+              <svg class="coach-layout__nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span v-if="mensajesNoLeidos > 0" class="coach-layout__chat-badge coach-layout__chat-badge--nav">{{ mensajesNoLeidos > 99 ? '99+' : mensajesNoLeidos }}</span>
+            </span>
             <span class="coach-layout__nav-label">Chat</span>
           </RouterLink>
-          <div class="coach-layout__nav-item-wrapper">
+          <div ref="masMenuWrapperRef" class="coach-layout__nav-item-wrapper">
             <button
               type="button"
               class="coach-layout__nav-item coach-layout__nav-item--config"
-              :class="{ 'coach-layout__nav-item--active': isActive('CoachFormularios') || isActive('CoachParametros') || isActive('CoachEjercicios') }"
+              :class="{ 'coach-layout__nav-item--active': masMenuActivo }"
               @click="toggleConfigSubmenu"
             >
-              <svg class="coach-layout__nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/>
+              <!-- Horizontal cuando no está activo -->
+              <svg v-if="!masMenuActivo" class="coach-layout__nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="1.5"/>
+                <circle cx="12" cy="12" r="1.5"/>
+                <circle cx="19" cy="12" r="1.5"/>
               </svg>
-              <span class="coach-layout__nav-label">Config</span>
+              <!-- Vertical cuando está activo (Formularios, Parámetros o Ejercicios) -->
+              <svg v-else class="coach-layout__nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="1.5"/>
+                <circle cx="12" cy="12" r="1.5"/>
+                <circle cx="12" cy="19" r="1.5"/>
+              </svg>
+              <span class="coach-layout__nav-label">Más</span>
             </button>
             <Transition name="submenu">
               <div v-if="configSubmenuOpen" class="coach-layout__submenu">
@@ -309,6 +378,18 @@ const showTopbar = computed(() => {
                   <span>Parámetros</span>
                 </RouterLink>
                 <RouterLink
+                  :to="{ name: 'CoachConfiguracion' }"
+                  class="coach-layout__submenu-item"
+                  :class="{ 'coach-layout__submenu-item--active': isActive('CoachConfiguracion') }"
+                  @click="closeConfigSubmenu"
+                >
+                  <svg class="coach-layout__submenu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 4h9l3 3v13H6z"/>
+                    <path d="M9 8h6M9 12h6M9 16h3"/>
+                  </svg>
+                  <span>Configuración</span>
+                </RouterLink>
+                <RouterLink
                   :to="{ name: 'CoachEjercicios' }"
                   class="coach-layout__submenu-item"
                   :class="{ 'coach-layout__submenu-item--active': isActive('CoachEjercicios') }"
@@ -319,7 +400,17 @@ const showTopbar = computed(() => {
                     <path d="M12 8v8M8 12h8"/>
                   </svg>
                   <span>Ejercicios</span>
-          </RouterLink>
+                </RouterLink>
+                <button
+                  type="button"
+                  class="coach-layout__submenu-item coach-layout__submenu-item--logout"
+                  @click="handleLogout"
+                >
+                  <svg class="coach-layout__submenu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+                  </svg>
+                  <span>Cerrar sesión</span>
+                </button>
               </div>
             </Transition>
           </div>
@@ -647,21 +738,83 @@ const showTopbar = computed(() => {
   color: #a0a0a0;
 }
 
+.coach-layout__nav-item.coach-layout__nav-item--active,
 .coach-layout__nav-item--active {
-  color: #00D261;
+  color: var(--color-success-500) !important;
+}
+
+.coach-layout__nav-item--active .coach-layout__nav-icon,
+.coach-layout__nav-item--active .coach-layout__nav-label {
+  color: var(--color-success-500) !important;
+}
+
+.coach-layout__nav-item--active .coach-layout__nav-icon {
+  stroke: var(--color-success-500) !important;
+}
+
+/* Ruta activa: asegurar que el enlace activo de Vue Router también se pinte */
+.coach-layout__bottom-nav :deep(a.router-link-active.coach-layout__nav-item),
+.coach-layout__bottom-nav :deep(a.router-link-exact-active.coach-layout__nav-item) {
+  color: var(--color-success-500) !important;
+}
+
+.coach-layout__bottom-nav :deep(a.router-link-active.coach-layout__nav-item .coach-layout__nav-icon),
+.coach-layout__bottom-nav :deep(a.router-link-active.coach-layout__nav-item .coach-layout__nav-label),
+.coach-layout__bottom-nav :deep(a.router-link-exact-active.coach-layout__nav-item .coach-layout__nav-icon),
+.coach-layout__bottom-nav :deep(a.router-link-exact-active.coach-layout__nav-item .coach-layout__nav-label) {
+  color: var(--color-success-500) !important;
+  stroke: var(--color-success-500) !important;
 }
 
 .coach-layout__nav-icon {
   width: 24px;
   height: 24px;
+  color: inherit;
+  stroke: currentColor;
 }
 
 .coach-layout__nav-label {
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  color: inherit;
 }
 
 /* Submenú móvil */
+.coach-layout__nav-item--chat {
+  position: relative;
+}
+
+.coach-layout__nav-item-chat-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.coach-layout__chat-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--color-success-500);
+  border-radius: 999px;
+}
+
+.coach-layout__chat-badge--nav {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+}
+
+.coach-layout__sidebar-link .coach-layout__chat-badge {
+  margin-left: auto;
+}
+
 .coach-layout__nav-item-wrapper {
   position: relative;
 }
@@ -718,6 +871,24 @@ const showTopbar = computed(() => {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+}
+
+.coach-layout__submenu-item--logout {
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: #EF5C5C;
+  border-top: 1px solid #252525;
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+}
+
+.coach-layout__submenu-item--logout:hover {
+  background: rgba(239, 92, 92, 0.1);
+  color: #EF5C5C;
 }
 
 .submenu-enter-active,

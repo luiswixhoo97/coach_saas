@@ -53,6 +53,11 @@ const routes = [
         component: () => import('@/views/coach/PerfilView.vue')
       },
       {
+        path: 'configuracion',
+        name: 'CoachConfiguracion',
+        component: () => import('@/views/coach/ConfiguracionCoachView.vue')
+      },
+      {
         path: 'chat',
         name: 'CoachChat',
         component: () => import('@/views/coach/ChatView.vue')

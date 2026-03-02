@@ -39,6 +39,11 @@ const cargandoRutina = ref(false)
 // Estado para el modal de asignar rutina a cliente
 const showAsignarRutinaClienteModal = ref(false)
 const procesandoActivo = ref(false)
+const procesandoMarcarActualizado = ref(false)
+
+const editSemanasEval = ref(false)
+const editSemanasEvalValor = ref(null)
+const guardandoSemanasEval = ref(false)
 
 // Estado para formularios y parámetros unificados
 const showFormularioClienteModal = ref(false)
@@ -267,6 +272,54 @@ async function toggleClienteActivo() {
   }
 }
 
+async function marcarComoActualizado() {
+  if (!props.cliente?.id) return
+  procesandoMarcarActualizado.value = true
+  try {
+    await put(`/coach/clientes/${props.cliente.id}`, { pendiente_actualizacion: false })
+    const res = await get(`/coach/clientes/${props.cliente.id}`)
+    const clienteActualizado = res.datos ?? res.data ?? res
+    emit('cliente-actualizado', clienteActualizado)
+  } catch (e) {
+    await Swal.fire({
+      title: 'Error',
+      text: e.message || 'No se pudo marcar como actualizado.',
+      icon: 'error',
+      confirmButtonColor: '#00D261'
+    })
+  } finally {
+    procesandoMarcarActualizado.value = false
+  }
+}
+
+function cancelarEditSemanasEval() {
+  editSemanasEval.value = false
+  editSemanasEvalValor.value = props.cliente?.semanas_entre_evaluaciones ?? null
+}
+
+async function guardarSemanasEval() {
+  if (!props.cliente?.id) return
+  const valor = editSemanasEvalValor.value === '' || editSemanasEvalValor.value == null ? null : Number(editSemanasEvalValor.value)
+  if (valor != null && (valor < 1 || valor > 52)) return
+  guardandoSemanasEval.value = true
+  try {
+    await put(`/coach/clientes/${props.cliente.id}`, { semanas_entre_evaluaciones: valor })
+    const res = await get(`/coach/clientes/${props.cliente.id}`)
+    const clienteActualizado = res.datos ?? res.data ?? res
+    emit('cliente-actualizado', clienteActualizado)
+    editSemanasEval.value = false
+  } catch (e) {
+    await Swal.fire({
+      title: 'Error',
+      text: e.message || 'No se pudo guardar.',
+      icon: 'error',
+      confirmButtonColor: '#00D261'
+    })
+  } finally {
+    guardandoSemanasEval.value = false
+  }
+}
+
 async function previewDieta(dieta) {
   if (!dieta.id) return
   
@@ -453,6 +506,14 @@ async function cargarEvaluaciones() {
 }
 
 watch(
+  () => [props.cliente?.id, props.cliente?.semanas_entre_evaluaciones],
+  () => {
+    editSemanasEvalValor.value = props.cliente?.semanas_entre_evaluaciones ?? null
+    if (!props.cliente?.id) editSemanasEval.value = false
+  },
+  { immediate: true }
+)
+watch(
   () => props.cliente?.id,
   (id) => {
     if (id) cargarEvaluaciones()
@@ -585,6 +646,39 @@ async function onEvaluacionCreada() {
             >
               {{ cliente.tiene_dieta ? 'Sí' : 'No' }}
             </span>
+          </div>
+          <div class="cliente-modal__row cliente-modal__row--semanas-eval">
+            <span class="cliente-modal__label">Semanas entre evaluaciones</span>
+            <span v-if="!editSemanasEval" class="cliente-modal__value">
+              {{ cliente.semanas_entre_evaluaciones != null ? cliente.semanas_entre_evaluaciones + ' semanas' : 'Por defecto del coach' }}
+              <button type="button" class="cliente-modal__link-btn" @click="editSemanasEval = true">Editar</button>
+            </span>
+            <span v-else class="cliente-modal__semanas-edit">
+              <input
+                v-model.number="editSemanasEvalValor"
+                type="number"
+                min="1"
+                max="52"
+                class="cliente-modal__semanas-input"
+                placeholder="Vacío = defecto"
+              />
+              <span class="cliente-modal__semanas-suffix">semanas</span>
+              <button type="button" class="cliente-modal__btn-small" :disabled="guardandoSemanasEval" @click="guardarSemanasEval">Guardar</button>
+              <button type="button" class="cliente-modal__btn-small cliente-modal__btn-small--outline" @click="cancelarEditSemanasEval">Cancelar</button>
+            </span>
+          </div>
+
+          <!-- Aviso pendiente actualización rutina/dieta -->
+          <div v-if="cliente.pendiente_actualizacion" class="cliente-modal__aviso-actualizacion">
+            <p class="cliente-modal__aviso-texto">Este cliente requiere actualización de rutina y/o dieta tras la renovación.</p>
+            <button
+              type="button"
+              class="cliente-modal__btn-marcar-actualizado"
+              :disabled="procesandoMarcarActualizado"
+              @click="marcarComoActualizado"
+            >
+              {{ procesandoMarcarActualizado ? 'Guardando…' : 'Marcar como actualizado' }}
+            </button>
           </div>
 
           <!-- Sección Rutinas Asignadas -->
@@ -1091,6 +1185,105 @@ async function onEvaluacionCreada() {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.cliente-modal__row--semanas-eval .cliente-modal__value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.cliente-modal__link-btn {
+  background: none;
+  border: none;
+  font-size: 0.8125rem;
+  color: var(--color-success-500);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+.cliente-modal__link-btn:hover {
+  color: #00e56b;
+}
+.cliente-modal__semanas-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.cliente-modal__semanas-input {
+  width: 4rem;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+  color: #fff;
+  text-align: center;
+}
+.cliente-modal__semanas-suffix {
+  font-size: 0.8125rem;
+  color: #697586;
+}
+.cliente-modal__btn-small {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8125rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-success-500);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 500;
+}
+.cliente-modal__btn-small:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.cliente-modal__btn-small--outline {
+  background: transparent;
+  border: 1px solid #444;
+  color: var(--color-label-tertiary);
+}
+.cliente-modal__btn-small--outline:hover {
+  background: #252525;
+}
+
+.cliente-modal__aviso-actualizacion {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, #A855F7 12%, transparent);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
+.cliente-modal__aviso-texto {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: #e0d4f0;
+  line-height: 1.4;
+}
+
+.cliente-modal__btn-marcar-actualizado {
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #fff;
+  background: #A855F7;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.cliente-modal__btn-marcar-actualizado:hover:not(:disabled) {
+  background: #9333ea;
+}
+
+.cliente-modal__btn-marcar-actualizado:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .cliente-modal__footer {

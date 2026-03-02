@@ -2,41 +2,33 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
-import { useAuth } from '@/composables/useAuth'
 import BaseSegmentedControl from '@/components/ui/BaseSegmentedControl.vue'
 import PerfilStatModal from '@/components/coach/PerfilStatModal.vue'
 
 const router = useRouter()
 const { get, post, put, cargando } = useApi()
-const { logout } = useAuth()
 const perfil = ref(null)
 const dashboard = ref(null)
 const error = ref('')
-const cerrandoSesion = ref(false)
 const linkCopiado = ref(false)
 const generando = ref(false)
 const linkActivo = ref(false)
 const linkInput = ref(null)
-
-// Tabs: Estadísticas | Otros
-const tabSeleccionado = ref('estadisticas')
-const opcionesTab = [
-  { value: 'estadisticas', label: 'Estadísticas' },
-  { value: 'otros', label: 'Otros' }
-]
 
 const stats = computed(() => {
   if (!dashboard.value) return null
   return {
     clientesTotal: dashboard.value.clientes?.total ?? 0,
     clientesActivos: dashboard.value.clientes?.activos ?? 0,
+    nuevoIngreso: dashboard.value.clientes?.nuevo_ingreso ?? 0,
     clientesConDieta: dashboard.value.clientes?.con_dieta ?? 0,
     clientesSinDieta: dashboard.value.clientes?.sin_dieta ?? 0,
     clientesVencimientoProximo: dashboard.value.clientes?.vencimiento_proximo ?? 0,
     suscripcionesActivas: dashboard.value.suscripciones_activas ?? 0,
     ingresosMes: dashboard.value.ingresos_mes ?? 0,
     citasAgendadas: dashboard.value.citas_agendadas ?? 0,
-    citasReagendadas: dashboard.value.citas_reagendadas ?? 0
+    citasReagendadas: dashboard.value.citas_reagendadas ?? 0,
+    evaluacionProxima: dashboard.value.clientes?.evaluacion_proxima ?? 0
   }
 })
 
@@ -82,12 +74,6 @@ function avatarUrl(path) {
   if (!path) return null
   const base = (import.meta.env.VITE_API_URL || '').replace(/\/api\/v1\/?$/, '') || window.location.origin
   return `${base}/storage/${path}`
-}
-
-async function handleLogout() {
-  cerrandoSesion.value = true
-  await logout()
-  cerrandoSesion.value = false
 }
 
 function inicialesAvatar(datos) {
@@ -290,16 +276,8 @@ function irACliente(clienteId) {
         </div>
       </section>
 
-      <!-- Tabs: Estadísticas / Otros -->
-      <div class="perfil__tabs-wrap">
-        <BaseSegmentedControl
-          v-model="tabSeleccionado"
-          :options="opcionesTab"
-        />
-      </div>
-
       <!-- Estadísticas -->
-      <section class="perfil__section" v-if="tabSeleccionado === 'estadisticas'">
+      <section class="perfil__section">
         <div class="perfil__section-header">
           <h2 class="perfil__section-title">Estadísticas</h2>
         </div>
@@ -338,6 +316,43 @@ function irACliente(clienteId) {
             </div>
             <span class="perfil__detail-value">{{ stats.clientesActivos }}</span>
             <span class="perfil__detail-label">Activos</span>
+          </div>
+          <div
+            class="perfil__detail perfil__detail--clickable"
+            role="button"
+            tabindex="0"
+            @click="statModalActiva = 'evaluacion_proxima'"
+            @keydown.enter.prevent="statModalActiva = 'evaluacion_proxima'"
+            @keydown.space.prevent="statModalActiva = 'evaluacion_proxima'"
+          >
+            <div class="perfil__detail-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="2"/>
+                <path d="M9 12h6M9 16h6"/>
+              </svg>
+            </div>
+            <span class="perfil__detail-value">{{ stats.evaluacionProxima }}</span>
+            <span class="perfil__detail-label">Próximo a evaluación</span>
+          </div>
+          <div
+            class="perfil__detail perfil__detail--clickable"
+            role="button"
+            tabindex="0"
+            @click="statModalActiva = 'nuevo_ingreso'"
+            @keydown.enter.prevent="statModalActiva = 'nuevo_ingreso'"
+            @keydown.space.prevent="statModalActiva = 'nuevo_ingreso'"
+          >
+            <div class="perfil__detail-icon perfil__detail-icon--warning">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <line x1="19" y1="8" x2="19" y2="14"/>
+                <line x1="22" y1="11" x2="16" y2="11"/>
+              </svg>
+            </div>
+            <span class="perfil__detail-value">{{ stats.nuevoIngreso }}</span>
+            <span class="perfil__detail-label">Nuevo ingreso</span>
           </div>
           <div
             class="perfil__detail perfil__detail--clickable"
@@ -470,30 +485,6 @@ function irACliente(clienteId) {
           <p class="perfil__otros-text">Cargando estadísticas…</p>
         </div>
       </section>
-
-      <!-- Otros -->
-      <section class="perfil__section" v-if="tabSeleccionado === 'otros'">
-        <div class="perfil__section-header">
-          <h2 class="perfil__section-title">Otros</h2>
-        </div>
-        
-        <div class="perfil__otros-placeholder">
-          <p class="perfil__otros-text">Contenido adicional disponible próximamente.</p>
-        </div>
-      </section>
-
-      <!-- Actions -->
-      <div class="perfil__actions">
-        <button
-          type="button"
-          class="perfil__btn perfil__btn--danger"
-          :disabled="cerrandoSesion"
-          @click="handleLogout"
-        >
-          <span v-if="cerrandoSesion" class="perfil__spinner" />
-          <span v-else>Cerrar sesión</span>
-        </button>
-      </div>
 
       <!-- Modal detalle estadística (bottom sheet con lista y navegación) -->
       <PerfilStatModal
@@ -751,6 +742,51 @@ function irACliente(clienteId) {
 .perfil__section--accordion.perfil__section--open .perfil__section-chevron {
   transform: rotate(90deg);
 }
+
+/* Configuración */
+.perfil__config {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.perfil__config-desc {
+  font-size: 0.8125rem;
+  color: var(--color-label-secondary);
+  margin: 0 0 0.25rem;
+  line-height: 1.4;
+}
+.perfil__config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.perfil__config-field label {
+  font-size: 0.8125rem;
+  color: #697586;
+}
+.perfil__config-input {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  color: #fff;
+}
+.perfil__config-input:focus {
+  outline: none;
+  border-color: var(--color-success-500);
+}
+.perfil__config-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.perfil__config-ok {
+  font-size: 0.8125rem;
+  color: var(--color-success-500);
+}
+
 .perfil__accordion-content {
   overflow: hidden;
   max-height: 800px;
@@ -949,6 +985,13 @@ function irACliente(clienteId) {
   align-items: center;
   justify-content: center;
   border: none;
+}
+.perfil__btn--primary {
+  background: var(--color-success-500, #00D261);
+  color: #0a0a0a;
+}
+.perfil__btn--primary:hover:not(:disabled) {
+  background: #00e56b;
 }
 .perfil__btn--outline {
   background: transparent;

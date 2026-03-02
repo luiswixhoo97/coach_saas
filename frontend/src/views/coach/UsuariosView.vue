@@ -96,6 +96,7 @@ async function cargarClientes(pagina = 1) {
     if (buscar.value.trim()) params.set('buscar', buscar.value.trim())
     if (filtroActivo.value === 'activos') params.set('activo', '1')
     if (filtroActivo.value === 'inactivos') params.set('activo', '0')
+    if (filtroActivo.value === 'nuevo_ingreso') params.set('nuevo_ingreso', '1')
     const query = params.toString() ? `?${params.toString()}` : ''
     const res = await get(`/coach/clientes${query}`)
     clientes.value = res.data?.datos ?? res.datos ?? []
@@ -412,10 +413,11 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
             placeholder="Buscar por email, nombre o apellido..."
             aria-label="Buscar"
           />
-          <select v-model="filtroActivo" class="usuarios__select" aria-label="Estado">
+          <select v-model="filtroActivo" class="usuarios__select" aria-label="Filtro">
             <option value="">Todos</option>
             <option value="activos">Activos</option>
             <option value="inactivos">Inactivos</option>
+            <option value="nuevo_ingreso">Solo nuevo ingreso</option>
           </select>
         </div>
 
@@ -679,6 +681,18 @@ watch([buscar, filtroActivo], () => cargarClientes(1))
                 </span>
               </div>
               <div class="usuarios__link-meta">
+                <span
+                  v-if="c.es_nuevo_ingreso"
+                  class="usuarios__meta-badge usuarios__meta-badge--warning"
+                >
+                  Nuevo ingreso
+                </span>
+                <span
+                  v-if="c.pendiente_actualizacion"
+                  class="usuarios__meta-badge usuarios__meta-badge--reagendar"
+                >
+                  Actualizar rutina/dieta
+                </span>
                 <span
                   class="usuarios__meta-badge"
                   :class="`usuarios__meta-badge--${metaBadgeSuscripcionVariant(c)}`"

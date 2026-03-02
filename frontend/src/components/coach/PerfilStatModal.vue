@@ -22,12 +22,14 @@ const items = ref([]) // clientes o citas según statKey
 const STAT_META = {
   clientes: { titulo: 'Clientes', descripcion: 'Total de clientes registrados en tu cuenta.', api: () => get('/coach/clientes?per_page=100') },
   activos: { titulo: 'Activos', descripcion: 'Clientes con estado activo que pueden acceder a la app.', api: () => get('/coach/clientes?per_page=100&activo=1') },
+  nuevo_ingreso: { titulo: 'Nuevo ingreso', descripcion: 'Personas que se inscribieron por transferencia o pasarela y están pendientes de que actives su cuenta.', api: () => get('/coach/clientes?per_page=100&nuevo_ingreso=1') },
   con_dieta: { titulo: 'Con dieta', descripcion: 'Clientes que tienen al menos un archivo de dieta asignado.', api: () => get('/coach/clientes?per_page=100&con_dieta=1') },
   sin_dieta: { titulo: 'Sin dieta', descripcion: 'Clientes que aún no tienen asignado un archivo de dieta.', api: () => get('/coach/clientes?per_page=100&sin_dieta=1') },
   suscripciones: { titulo: 'Suscripciones', descripcion: 'Clientes con suscripción activa.', api: () => get('/coach/clientes?per_page=100&suscripcion_activa=1') },
   vence_pronto: { titulo: 'Vence pronto', descripcion: 'Clientes cuya suscripción vence próximamente.', api: () => get('/coach/clientes?per_page=100&vencimiento_proximo=1') },
   citas_agendadas: { titulo: 'Citas agendadas', descripcion: 'Evaluaciones programadas pendientes.', api: () => get('/coach/citas-agendadas') },
   citas_reagendadas: { titulo: 'Citas reagendadas', descripcion: 'Evaluaciones que requieren nueva fecha.', api: () => get('/coach/citas-agendadas?estado=reagendar') },
+  evaluacion_proxima: { titulo: 'Próximo a evaluación', descripcion: 'Clientes que cumplen el margen de tiempo para agendar su próxima evaluación (sin cita pendiente).', api: () => get('/coach/evaluacion-proxima') },
   ingresos_mes: { titulo: 'Ingresos mes', descripcion: 'Ingresos por pagos de suscripciones en el mes actual.' }
 }
 
@@ -39,13 +41,15 @@ const valorActual = computed(() => {
   const map = {
     clientes: s.clientesTotal,
     activos: s.clientesActivos,
+    nuevo_ingreso: s.nuevoIngreso,
     con_dieta: s.clientesConDieta,
     sin_dieta: s.clientesSinDieta,
     suscripciones: s.suscripcionesActivas,
     vence_pronto: s.clientesVencimientoProximo,
     ingresos_mes: s.ingresosMes != null ? `$${Number(s.ingresosMes).toLocaleString()}` : '—',
     citas_agendadas: s.citasAgendadas,
-    citas_reagendadas: s.citasReagendadas
+    citas_reagendadas: s.citasReagendadas,
+    evaluacion_proxima: s.evaluacionProxima
   }
   return map[props.statKey] ?? '—'
 })
@@ -66,6 +70,7 @@ function getItemLabel(item) {
     const fecha = item.fecha ? new Date(item.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
     return `${item.cliente_nombre || '—'} · ${fecha} ${item.hora || ''}`
   }
+  if (props.statKey === 'evaluacion_proxima' && item.nombre_completo) return item.nombre_completo
   return nombreCompleto(item)
 }
 
@@ -84,7 +89,7 @@ async function cargarDatos() {
   items.value = []
   try {
     const res = await config.api()
-    if (props.statKey === 'citas_agendadas' || props.statKey === 'citas_reagendadas') {
+    if (props.statKey === 'citas_agendadas' || props.statKey === 'citas_reagendadas' || props.statKey === 'evaluacion_proxima') {
       items.value = res.datos ?? res.data ?? []
     } else {
       const data = res.data?.datos ?? res.datos ?? res.data ?? []
