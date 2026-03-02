@@ -23,6 +23,9 @@ class Cliente extends ModeloBase
         'altura',
         'objetivo',
         'activo',
+        'pendiente_activacion',
+        'pendiente_actualizacion',
+        'semanas_entre_evaluaciones',
         'creado_por',
     ];
 
@@ -32,6 +35,9 @@ class Cliente extends ModeloBase
             'fecha_nacimiento' => 'date',
             'altura' => 'decimal:2',
             'activo' => 'boolean',
+            'pendiente_activacion' => 'boolean',
+            'pendiente_actualizacion' => 'boolean',
+            'semanas_entre_evaluaciones' => 'integer',
         ];
     }
 

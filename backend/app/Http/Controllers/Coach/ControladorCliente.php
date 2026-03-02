@@ -56,6 +56,10 @@ class ControladorCliente extends Controller
             $query->whereHas('suscripciones', fn($q) => $q->where('estado', 'activa'));
         }
 
+        if ($request->boolean('nuevo_ingreso')) {
+            $query->where('pendiente_activacion', true);
+        }
+
         if ($request->has('buscar') && trim($request->buscar) !== '') {
             $buscar = '%' . trim($request->buscar) . '%';
             $query->where(function ($q) use ($buscar) {
@@ -170,7 +174,7 @@ class ControladorCliente extends Controller
 
         $cliente = Cliente::where('creado_por', $coach->id)->findOrFail($id);
 
-        $cliente->update($request->only(['nombre', 'apellido_paterno', 'apellido_materno', 'sexo', 'fecha_nacimiento', 'altura', 'objetivo']));
+        $cliente->update($request->only(['nombre', 'apellido_paterno', 'apellido_materno', 'sexo', 'fecha_nacimiento', 'altura', 'objetivo', 'pendiente_actualizacion', 'semanas_entre_evaluaciones']));
 
         return response()->json([
             'mensaje' => 'Cliente actualizado correctamente.',
@@ -189,7 +193,7 @@ class ControladorCliente extends Controller
             ->findOrFail($id);
         
         return DB::transaction(function () use ($cliente, $coach) {
-            $cliente->update(['activo' => true]);
+            $cliente->update(['activo' => true, 'pendiente_activacion' => false]);
             $cliente->usuario->update(['activo' => true]);
             
             // Asignar formulario inicial si existe y no está asignado

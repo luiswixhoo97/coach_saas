@@ -54,6 +54,13 @@ Route::prefix('coach')
     Route::put('/perfil/toggle-link-registro', [ControladorPerfil::class, 'toggleLinkRegistro'])
         ->name('coach.perfil.toggle-link-registro');
 
+    Route::get('/configuracion', [ControladorPerfil::class, 'configuracion'])
+        ->name('coach.configuracion');
+    Route::put('/configuracion', [ControladorPerfil::class, 'actualizarConfiguracion'])
+        ->name('coach.configuracion.actualizar');
+    Route::get('/evaluacion-proxima', [ControladorPerfil::class, 'evaluacionProxima'])
+        ->name('coach.evaluacion-proxima');
+
     /*
     |--------------------------------------------------------------------------
     | Clientes
@@ -342,6 +349,8 @@ Route::prefix('coach')
     */
     Route::get('/chats', [ControladorChat::class, 'index'])
         ->name('coach.chats.index');
+    Route::get('/chats/mensajes-no-leidos', [ControladorChat::class, 'mensajesNoLeidos'])
+        ->name('coach.chats.mensajes-no-leidos');
     
     Route::post('/chats', [ControladorChat::class, 'almacenar'])
         ->name('coach.chats.almacenar');

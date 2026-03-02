@@ -21,6 +21,8 @@ class ActualizarClienteRequest extends FormRequest
             'fecha_nacimiento' => 'nullable|date|before:today',
             'altura' => 'nullable|numeric|min:0|max:300',
             'objetivo' => 'nullable|string',
+            'pendiente_actualizacion' => 'sometimes|boolean',
+            'semanas_entre_evaluaciones' => 'nullable|integer|min:1|max:52',
         ];
     }
 

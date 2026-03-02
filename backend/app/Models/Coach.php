@@ -120,6 +120,11 @@ class Coach extends ModeloBase
         return $this->belongsTo(Formulario::class, 'formulario_inicial_id');
     }
 
+    public function configuracion(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\ConfiguracionCoach::class, 'coach_id');
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Helpers - Formularios y Registro

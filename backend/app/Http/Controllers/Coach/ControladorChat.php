@@ -219,4 +219,19 @@ class ControladorChat extends Controller
 
         return response()->json(['mensaje' => 'Mensajes marcados como leídos.']);
     }
+
+    /**
+     * Total de mensajes no leídos del coach (para el contador del menú).
+     */
+    public function mensajesNoLeidos(Request $request): JsonResponse
+    {
+        $coach = $this->getCoach($request);
+
+        $total = Mensaje::whereHas('chat', fn($q) => $q->where('coach_id', $coach->id))
+            ->where('emisor_tipo', 'cliente')
+            ->where('leido', false)
+            ->count();
+
+        return response()->json(['datos' => ['total' => $total]]);
+    }
 }

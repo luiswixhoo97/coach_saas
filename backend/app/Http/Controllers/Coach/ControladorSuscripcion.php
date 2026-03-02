@@ -125,6 +125,9 @@ class ControladorSuscripcion extends Controller
             'estado' => 'activa',
         ]);
 
+        // Marcar al cliente como pendiente de actualizar rutina/dieta tras la renovación
+        $suscripcion->cliente->update(['pendiente_actualizacion' => true]);
+
         return response()->json([
             'mensaje' => 'Suscripción renovada correctamente.',
             'datos' => $suscripcion,

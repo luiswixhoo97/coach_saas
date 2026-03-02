@@ -1,0 +1,32 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('configuraciones_coach', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('coach_id')->unique()->constrained('coaches')->onDelete('cascade');
+            $table->string('nombre_cuenta')->nullable();
+            $table->string('banco')->nullable();
+            $table->string('clave')->nullable();
+            $table->unsignedTinyInteger('semanas_entre_evaluaciones')->default(4);
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('configuraciones_coach');
+    }
+};

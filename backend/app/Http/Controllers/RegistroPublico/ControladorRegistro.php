@@ -106,6 +106,7 @@ class ControladorRegistro extends Controller
                 'usuario_id' => $usuario->id,
                 'creado_por' => $coach->id,
                 'activo' => false, // Siempre inactivo con transferencia
+                'pendiente_activacion' => true, // Nuevo ingreso: pendiente de que el coach active
                 ...$datosCliente,
             ]);
             
