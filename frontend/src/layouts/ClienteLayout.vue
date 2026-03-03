@@ -4,10 +4,12 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useAuthStore } from '@/stores/auth'
 import { useAuth } from '@/composables/useAuth'
+import { usePushNotifications } from '@/composables/usePushNotifications'
 import AppLayout from '@/layouts/AppLayout.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { inicializarPush } = usePushNotifications()
 const api = useApi()
 const authStore = useAuthStore()
 const { logout } = useAuth()
@@ -40,6 +42,13 @@ onMounted(() => {
   checkDesktop()
   window.addEventListener('resize', checkDesktop)
   verificarEstadoCliente()
+  inicializarPush({
+    alAbrirNotificacion: (data) => {
+      if (data?.tipo === 'chat' && data?.chat_id) {
+        router.push({ name: 'ClienteChat' })
+      }
+    }
+  })
 })
 
 onUnmounted(() => {

@@ -1,11 +1,14 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useApi } from '@/composables/useApi'
+import { usePushNotifications } from '@/composables/usePushNotifications'
 
 const route = useRoute()
+const router = useRouter()
+const { inicializarPush } = usePushNotifications()
 const { logout } = useAuth()
 const { get } = useApi()
 const sidebarOpen = ref(false)
@@ -74,6 +77,13 @@ onMounted(() => {
   window.addEventListener('resize', checkDesktop)
   document.addEventListener('click', onDocumentClick)
   cargarMensajesNoLeidos()
+  inicializarPush({
+    alAbrirNotificacion: (data) => {
+      if (data?.tipo === 'chat' && data?.chat_id) {
+        router.push({ name: 'CoachChatDetalle', params: { id: data.chat_id } })
+      }
+    }
+  })
 })
 
 onUnmounted(() => {
