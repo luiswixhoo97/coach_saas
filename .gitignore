@@ -22,6 +22,10 @@ build/
 .DS_Store
 Thumbs.db
 
+# Windows: dispositivo reservado "nul", evita error al hacer git add
+nul
+NUL
+
 # Logs
 *.log
 npm-debug.log*

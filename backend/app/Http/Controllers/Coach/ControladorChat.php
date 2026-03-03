@@ -13,6 +13,7 @@ use App\Models\ArchivoMensaje;
 use App\Models\Chat;
 use App\Models\Cliente;
 use App\Models\Mensaje;
+use App\Services\Notificaciones\ServicioNotificacionesPush;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -141,6 +142,17 @@ class ControladorChat extends Controller
         }
 
         $chat->touch(); // Actualizar updated_at del chat
+
+        // Notificación push al cliente (destinatario)
+        $chat->load(['cliente.usuario', 'coach']);
+        $destinatario = $chat->cliente->usuario;
+        $coachParaNombre = $chat->coach;
+        $nombreRemitente = trim(($coachParaNombre->nombre ?? '') . ' ' . ($coachParaNombre->apellido_paterno ?? ''));
+        $preview = $request->input('mensaje', '');
+        if (mb_strlen($preview) > 80) {
+            $preview = mb_substr($preview, 0, 77) . '...';
+        }
+        app(ServicioNotificacionesPush::class)->notificarNuevoMensajeChat($destinatario, $nombreRemitente ?: 'Tu coach', $preview ?: 'Nuevo mensaje', $chat->id);
 
         // Cargar archivos para la respuesta
         $mensaje->load('archivos');

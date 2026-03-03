@@ -17,8 +17,13 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/app/firebase-credentials.json
 /storage/pail
 /vendor
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Windows: "nul" es nombre de dispositivo reservado, evita que Git lo intente indexar
+nul
+NUL

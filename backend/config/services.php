@@ -39,4 +39,16 @@ return [
         'key' => env('SERPAPI_KEY'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Firebase (FCM - notificaciones push)
+    |--------------------------------------------------------------------------
+    | Ruta al JSON de la cuenta de servicio de Firebase. Por defecto se usa
+    | storage/app/firebase-credentials.json. Puedes sobrescribir con la
+    | variable de entorno FIREBASE_CREDENTIALS (ruta absoluta).
+    */
+    'firebase' => [
+        'credentials' => env('FIREBASE_CREDENTIALS') ?: storage_path('app/firebase-credentials.json'),
+    ],
+
 ];

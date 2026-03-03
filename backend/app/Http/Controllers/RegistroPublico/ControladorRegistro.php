@@ -18,7 +18,8 @@ class ControladorRegistro extends Controller
 {
     public function mostrar(string $token): JsonResponse
     {
-        $coach = Coach::where('token_registro', $token)
+        $coach = Coach::with('configuracion')
+            ->where('token_registro', $token)
             ->where('link_registro_activo', true)
             ->where('activo', true)
             ->firstOrFail();
@@ -31,12 +32,19 @@ class ControladorRegistro extends Controller
             ], 400);
         }
         
+        $config = $coach->configuracion;
+        
         return response()->json([
             'datos' => [
                 'coach' => [
                     'id' => $coach->id,
                     'nombre' => $coach->nombre,
                 ],
+                'datos_bancarios' => $config ? [
+                    'nombre_cuenta' => $config->nombre_cuenta,
+                    'banco' => $config->banco,
+                    'clave' => $config->clave,
+                ] : null,
                 'planes' => $planes->map(fn($p) => [
                     'id' => $p->id,
                     'nombre' => $p->nombre,

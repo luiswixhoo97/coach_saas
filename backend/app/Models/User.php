@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -65,6 +66,11 @@ class User extends Authenticatable
     public function cliente(): HasOne
     {
         return $this->hasOne(Cliente::class, 'usuario_id');
+    }
+
+    public function dispositivos(): HasMany
+    {
+        return $this->hasMany(Dispositivo::class);
     }
 
     /*

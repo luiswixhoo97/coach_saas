@@ -41,8 +41,11 @@ erDiagram
     
     ejercicios ||--o{ rutina_ejercicios : "incluido"
     
+    evaluaciones }o--o| ubicaciones : "ubicacion_id"
     evaluaciones ||--o{ parametros_evaluacion : "tiene"
     evaluaciones ||--o{ fotos_evaluacion : "tiene"
+    
+    ubicaciones ||--o{ evaluaciones : "usado en"
     
     parametros ||--o{ parametros_evaluacion : "usado"
     
@@ -94,10 +97,15 @@ erDiagram
 |-------|-------------|
 | `dieta_cliente` | Dietas asignadas (archivos PDF) |
 
+### Datos globales (compartidos entre coaches)
+| Tabla | Descripción |
+|-------|-------------|
+| `ubicaciones` | Caché global de lugares (nombre, dirección, link Google Maps). Alimentada por búsquedas y al seleccionar en evaluaciones. Sin `coach_id`. |
+
 ### Módulo Evaluaciones
 | Tabla | Descripción |
 |-------|-------------|
-| `evaluaciones` | Evaluaciones físicas |
+| `evaluaciones` | Evaluaciones físicas. Incluye `ubicacion_id` (nullable, FK a `ubicaciones`) para modo presencial; `ubicacion_o_link` y `direccion` para legacy y modo online. |
 | `parametros` | Parámetros medibles (peso, grasa, etc.) |
 | `parametros_evaluacion` | Valores de parámetros por evaluación |
 | `fotos_evaluacion` | Fotos de progreso |
@@ -144,11 +152,14 @@ database/migrations/
 │   └── 2026_01_27_150527_create_rutina_cliente_table.php
 ├── Nutricion/
 │   └── 2026_01_27_150532_create_dieta_cliente_table.php
+├── Ubicaciones/
+│   └── 2026_02_20_161106_create_ubicaciones_table.php
 ├── Evaluaciones/
 │   ├── 2026_01_27_150533_create_evaluaciones_table.php
 │   ├── 2026_01_27_150534_create_parametros_table.php
 │   ├── 2026_01_27_150535_create_parametros_evaluacion_table.php
-│   └── 2026_01_27_150540_create_fotos_evaluacion_table.php
+│   ├── 2026_01_27_150540_create_fotos_evaluacion_table.php
+│   └── 2026_02_24_165300_add_ubicacion_id_to_evaluaciones_table.php
 ├── Formularios/
 │   ├── 2026_01_27_150541_create_formularios_table.php
 │   └── 2026_01_27_150542_create_formulario_respuestas_table.php

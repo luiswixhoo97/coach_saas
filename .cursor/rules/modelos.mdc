@@ -23,13 +23,16 @@ app/Models/
 ├── RutinaCliente.php
 ├── DietaCliente.php
 ├── Evaluacion.php
+├── Ubicacion.php           (caché global de lugares)
 ├── Parametro.php
 ├── ParametroEvaluacion.php
+├── ParametroCliente.php
 ├── FotoEvaluacion.php
 ├── Formulario.php
 ├── FormularioRespuesta.php
 ├── Chat.php
 ├── Mensaje.php
+├── ArchivoMensaje.php
 ├── Producto.php
 ├── Orden.php
 ├── OrdenItem.php
@@ -143,8 +146,34 @@ rutinas(): BelongsToMany -> Rutina (pivot: rutina_ejercicios)
 ```php
 // Relaciones
 suscripcion(): BelongsTo -> Suscripcion
+ubicacion(): BelongsTo -> Ubicacion
 parametrosEvaluacion(): HasMany -> ParametroEvaluacion
+parametrosCliente(): HasMany -> ParametroCliente
 fotos(): HasMany -> FotoEvaluacion
+
+// Métodos helper
+cliente(): ?Cliente
+esPresencial(): bool
+esOnline(): bool
+```
+
+### Ubicacion
+```php
+// Tabla global (sin coach_id). Caché de lugares: nombre, direccion, link_google_maps.
+// Relaciones
+evaluaciones(): HasMany -> Evaluacion
+
+// Scopes
+scopeBuscarPorQuery($query, string $searchQuery): Builder
+```
+
+### ParametroCliente
+```php
+// Historial de parámetros por cliente (vinculado a evaluación).
+// Relaciones
+cliente(): BelongsTo -> Cliente
+evaluacion(): BelongsTo -> Evaluacion
+parametro(): BelongsTo -> Parametro
 ```
 
 ### Formulario

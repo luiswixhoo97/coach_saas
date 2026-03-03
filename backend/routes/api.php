@@ -26,6 +26,7 @@ Route::prefix('v1')->group(function () {
     // Cargar rutas de módulos
     require __DIR__.'/app/registro_publico.php'; // Rutas públicas primero
     require __DIR__.'/app/autenticacion.php';
+    require __DIR__.'/app/dispositivos.php';
     require __DIR__.'/app/admin.php';
     require __DIR__.'/app/coach.php';
     require __DIR__.'/app/cliente.php';

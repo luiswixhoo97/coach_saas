@@ -27,7 +27,9 @@ app/Http/Controllers/
 │   ├── ControladorRutina.php
 │   ├── ControladorDieta.php
 │   ├── ControladorParametro.php
+│   ├── ControladorParametroCliente.php
 │   ├── ControladorEvaluacion.php
+│   ├── ControladorBuscarLugares.php
 │   ├── ControladorFormulario.php
 │   ├── ControladorChat.php
 │   ├── ControladorProducto.php
@@ -105,6 +107,10 @@ routes/
 | DELETE | `/clientes/{id}` | Eliminar cliente |
 | GET | `/clientes/{id}/historial` | Historial completo |
 | GET | `/clientes/{id}/progreso` | Progreso (evaluaciones) |
+| GET | `/clientes/{id}/parametros` | Historial de parámetros (ParametroCliente) |
+| POST | `/clientes/{id}/parametros` | Agregar parámetro al historial |
+| PUT | `/clientes/parametros/{id}` | Actualizar parámetro del historial |
+| DELETE | `/clientes/parametros/{id}` | Eliminar parámetro del historial |
 
 #### Planes y Suscripciones
 | Método | Ruta | Acción |
@@ -132,6 +138,11 @@ routes/
 | POST | `/rutinas/{id}/asignar` | Asignar a clientes |
 | DELETE | `/rutinas/{id}/desasignar/{clienteId}` | Desasignar |
 
+#### Ubicaciones (búsqueda de lugares)
+| Método | Ruta | Acción |
+|--------|------|--------|
+| GET | `/buscar-lugares?query=...&ciudad=...` | Buscar lugares (primero BD global, luego API SerpAPI) |
+
 #### Evaluaciones
 | Método | Ruta | Acción |
 |--------|------|--------|
@@ -139,8 +150,12 @@ routes/
 | POST | `/parametros` | Crear parámetro |
 | GET | `/evaluaciones` | Listar evaluaciones |
 | POST | `/evaluaciones` | Crear evaluación |
+| GET | `/evaluaciones/{id}` | Ver evaluación |
+| PUT | `/evaluaciones/{id}` | Actualizar evaluación |
+| DELETE | `/evaluaciones/{id}` | Eliminar evaluación |
 | POST | `/evaluaciones/{id}/parametros` | Agregar parámetro |
 | POST | `/evaluaciones/{id}/fotos` | Subir foto |
+| DELETE | `/evaluaciones/{id}/fotos/{fotoId}` | Eliminar foto |
 
 #### Formularios, Chat, Tienda
 - CRUD completo para formularios
