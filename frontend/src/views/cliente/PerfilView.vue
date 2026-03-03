@@ -2,17 +2,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useApi } from '@/composables/useApi'
-import { useAuth } from '@/composables/useAuth'
 import BaseSegmentedControl from '@/components/ui/BaseSegmentedControl.vue'
 import CircularProgress from '@/components/stats/CircularProgress.vue'
 import HistorialModal from '@/components/stats/HistorialModal.vue'
 import EvaluacionAgendadaCard from '@/components/cliente/EvaluacionAgendadaCard.vue'
 
 const { get, cargando } = useApi()
-const { logout } = useAuth()
 const perfil = ref(null)
 const error = ref('')
-const cerrandoSesion = ref(false)
 const tieneFormularioPendiente = ref(false)
 const formularioPendiente = ref(null)
 const evaluacionAgendada = ref(null)
@@ -56,12 +53,6 @@ function abrirHistorial(stat) {
     historial: stat.historial
   }
   modalHistorial.value = true
-}
-
-async function handleLogout() {
-  cerrandoSesion.value = true
-  await logout()
-  cerrandoSesion.value = false
 }
 
 function nombreCompleto(datos) {
@@ -315,25 +306,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Actions -->
-      <div class="perfil__actions">
-        <RouterLink 
-          v-if="perfil.activo"
-          to="/cliente/rutina" 
-          class="perfil__btn perfil__btn--outline"
-        >
-          Ver mis rutinas
-        </RouterLink>
-        <button
-          type="button"
-          class="perfil__btn perfil__btn--danger"
-          :disabled="cerrandoSesion"
-          @click="handleLogout"
-        >
-          <span v-if="cerrandoSesion" class="perfil__spinner" />
-          <span v-else>Cerrar sesión</span>
-        </button>
-      </div>
     </template>
 
     <!-- Loading -->
@@ -621,59 +593,6 @@ onMounted(async () => {
   height: 18px;
 }
 
-/* Actions */
-.perfil__actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-}
-.perfil__btn {
-  flex: 1;
-  padding: 0.875rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.perfil__btn--outline {
-  background: transparent;
-  border: 1px solid rgba(0, 210, 97, 0.4);
-  color: #00D261;
-}
-.perfil__btn--outline:hover {
-  background: rgba(0, 210, 97, 0.1);
-  border-color: #00D261;
-}
-.perfil__btn--danger {
-  background: transparent;
-  border: 1px solid rgba(239, 92, 92, 0.4);
-  color: #EF5C5C;
-}
-.perfil__btn--danger:hover:not(:disabled) {
-  background: rgba(239, 92, 92, 0.1);
-  border-color: #EF5C5C;
-}
-.perfil__btn--danger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.perfil__spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid rgba(239, 92, 92, 0.3);
-  border-top-color: #EF5C5C;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 
 /* Loading / Skeleton */
 .perfil__loading {

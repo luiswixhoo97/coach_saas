@@ -3,12 +3,21 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useAuthStore } from '@/stores/auth'
+import { useAuth } from '@/composables/useAuth'
 import AppLayout from '@/layouts/AppLayout.vue'
 
 const route = useRoute()
 const router = useRouter()
 const api = useApi()
 const authStore = useAuthStore()
+const { logout } = useAuth()
+const cerrandoSesion = ref(false)
+
+async function handleLogout() {
+  cerrandoSesion.value = true
+  await logout()
+  cerrandoSesion.value = false
+}
 const sidebarOpen = ref(false)
 const isDesktop = ref(false)
 
@@ -41,8 +50,8 @@ onUnmounted(() => {
 async function verificarEstadoCliente() {
   if (!authStore.esCliente) return
   
-  // Permitir acceso a perfil siempre
-  if (route.name === 'ClientePerfil') {
+  // Permitir acceso a perfil y chat siempre (chat para enviar comprobante de pago)
+  if (route.name === 'ClientePerfil' || route.name === 'ClienteChat') {
     return
   }
   
@@ -109,19 +118,35 @@ const showTopbar = computed(() => true)
         </div>
         <nav class="cliente-layout__sidebar-nav">
           <RouterLink
-            :to="{ name: 'ClienteDashboard' }"
+            :to="{ name: 'ClientePerfil' }"
             class="cliente-layout__sidebar-link"
-            :class="{ 'cliente-layout__sidebar-link--active': isActive('ClienteDashboard') }"
+            :class="{ 'cliente-layout__sidebar-link--active': isActive('ClientePerfil') }"
             @click="closeSidebar"
           >
             <div class="cliente-layout__sidebar-link-bg"></div>
             <div class="cliente-layout__sidebar-link-indicator"></div>
             <div class="cliente-layout__sidebar-icon-wrapper">
               <svg class="cliente-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
               </svg>
             </div>
-            <span class="cliente-layout__sidebar-link-text">Inicio</span>
+            <span class="cliente-layout__sidebar-link-text">Perfil</span>
+          </RouterLink>
+          <RouterLink
+            :to="{ name: 'ClienteChat' }"
+            class="cliente-layout__sidebar-link"
+            :class="{ 'cliente-layout__sidebar-link--active': isActive('ClienteChat') }"
+            @click="closeSidebar"
+          >
+            <div class="cliente-layout__sidebar-link-bg"></div>
+            <div class="cliente-layout__sidebar-link-indicator"></div>
+            <div class="cliente-layout__sidebar-icon-wrapper">
+              <svg class="cliente-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <span class="cliente-layout__sidebar-link-text">Chat</span>
           </RouterLink>
           <RouterLink
             :to="{ name: 'ClienteRutina' }"
@@ -153,37 +178,22 @@ const showTopbar = computed(() => true)
             </div>
             <span class="cliente-layout__sidebar-link-text">Dieta</span>
           </RouterLink>
-          <RouterLink
-            :to="{ name: 'ClienteChat' }"
-            class="cliente-layout__sidebar-link"
-            :class="{ 'cliente-layout__sidebar-link--active': isActive('ClienteChat') }"
-            @click="closeSidebar"
+          <button
+            type="button"
+            class="cliente-layout__sidebar-link cliente-layout__sidebar-link--logout"
+            :disabled="cerrandoSesion"
+            @click="handleLogout"
           >
             <div class="cliente-layout__sidebar-link-bg"></div>
-            <div class="cliente-layout__sidebar-link-indicator"></div>
             <div class="cliente-layout__sidebar-icon-wrapper">
               <svg class="cliente-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
             </div>
-            <span class="cliente-layout__sidebar-link-text">Chat</span>
-          </RouterLink>
-          <RouterLink
-            :to="{ name: 'ClientePerfil' }"
-            class="cliente-layout__sidebar-link"
-            :class="{ 'cliente-layout__sidebar-link--active': isActive('ClientePerfil') }"
-            @click="closeSidebar"
-          >
-            <div class="cliente-layout__sidebar-link-bg"></div>
-            <div class="cliente-layout__sidebar-link-indicator"></div>
-            <div class="cliente-layout__sidebar-icon-wrapper">
-              <svg class="cliente-layout__sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-            </div>
-            <span class="cliente-layout__sidebar-link-text">Perfil</span>
-          </RouterLink>
+            <span class="cliente-layout__sidebar-link-text">Cerrar sesión</span>
+          </button>
         </nav>
       </div>
     </aside>
@@ -217,19 +227,35 @@ const showTopbar = computed(() => true)
       <div class="bottom-nav">
         <div class="bottom-nav__container">
           <RouterLink
-            :to="{ name: 'ClienteDashboard' }"
+            :to="{ name: 'ClientePerfil' }"
             :class="[
               'bottom-nav__item',
-              isActive('ClienteDashboard') ? 'bottom-nav__item--active' : ''
+              isActive('ClientePerfil') ? 'bottom-nav__item--active' : ''
             ]"
           >
             <div class="bottom-nav__icon-wrapper">
               <div class="bottom-nav__icon-bg"></div>
               <svg class="bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <span class="bottom-nav__label">Inicio</span>
+            <span class="bottom-nav__label">Perfil</span>
+            <div class="bottom-nav__indicator"></div>
+          </RouterLink>
+          <RouterLink
+            :to="{ name: 'ClienteChat' }"
+            :class="[
+              'bottom-nav__item',
+              isActive('ClienteChat') ? 'bottom-nav__item--active' : ''
+            ]"
+          >
+            <div class="bottom-nav__icon-wrapper">
+              <div class="bottom-nav__icon-bg"></div>
+              <svg class="bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </div>
+            <span class="bottom-nav__label">Chat</span>
             <div class="bottom-nav__indicator"></div>
           </RouterLink>
           <RouterLink
@@ -264,38 +290,26 @@ const showTopbar = computed(() => true)
             <span class="bottom-nav__label">Dieta</span>
             <div class="bottom-nav__indicator"></div>
           </RouterLink>
-          <RouterLink
-            :to="{ name: 'ClienteChat' }"
+          <button
+            type="button"
             :class="[
               'bottom-nav__item',
-              isActive('ClienteChat') ? 'bottom-nav__item--active' : ''
+              'bottom-nav__item--logout'
             ]"
+            :disabled="cerrandoSesion"
+            @click="handleLogout"
           >
             <div class="bottom-nav__icon-wrapper">
               <div class="bottom-nav__icon-bg"></div>
               <svg class="bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
             </div>
-            <span class="bottom-nav__label">Chat</span>
+            <span class="bottom-nav__label">Salir</span>
             <div class="bottom-nav__indicator"></div>
-          </RouterLink>
-          <RouterLink
-            :to="{ name: 'ClientePerfil' }"
-            :class="[
-              'bottom-nav__item',
-              isActive('ClientePerfil') ? 'bottom-nav__item--active' : ''
-            ]"
-          >
-            <div class="bottom-nav__icon-wrapper">
-              <div class="bottom-nav__icon-bg"></div>
-              <svg class="bottom-nav__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <span class="bottom-nav__label">Perfil</span>
-            <div class="bottom-nav__indicator"></div>
-          </RouterLink>
+          </button>
         </div>
       </div>
     </template>
@@ -515,6 +529,39 @@ const showTopbar = computed(() => true)
 
 .cliente-layout__sidebar-link--active:hover .cliente-layout__sidebar-icon {
   filter: drop-shadow(0 0 12px rgba(0, 210, 97, 0.8));
+}
+
+/* Logout sidebar */
+.cliente-layout__sidebar-link--logout {
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 0.75rem;
+  border-top: 1px solid rgba(37, 37, 37, 0.8);
+  padding-top: 1.25rem;
+  border-radius: 0 0 12px 12px;
+}
+
+.cliente-layout__sidebar-link--logout .cliente-layout__sidebar-icon {
+  color: #EF5C5C;
+}
+
+.cliente-layout__sidebar-link--logout .cliente-layout__sidebar-link-text {
+  color: #EF5C5C;
+}
+
+.cliente-layout__sidebar-link--logout:hover {
+  color: #EF5C5C;
+}
+
+.cliente-layout__sidebar-link--logout:hover .cliente-layout__sidebar-link-bg {
+  background: linear-gradient(90deg, rgba(239, 92, 92, 0.1) 0%, rgba(239, 92, 92, 0.05) 100%);
+}
+
+.cliente-layout__sidebar-link--logout:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Animación de glow para icono activo */
@@ -792,6 +839,35 @@ const showTopbar = computed(() => true)
 
 .bottom-nav__item--active:hover .bottom-nav__icon {
   filter: drop-shadow(0 0 12px rgba(0, 210, 97, 0.7));
+}
+
+/* Logout bottom nav */
+.bottom-nav__item--logout {
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.bottom-nav__item--logout .bottom-nav__icon {
+  color: #EF5C5C;
+}
+
+.bottom-nav__item--logout .bottom-nav__label {
+  color: #EF5C5C;
+}
+
+.bottom-nav__item--logout::after {
+  background: linear-gradient(135deg, rgba(239, 92, 92, 0.1) 0%, rgba(239, 92, 92, 0.05) 100%);
+}
+
+.bottom-nav__item--logout:not(:disabled):hover .bottom-nav__icon {
+  color: #EF5C5C;
+  transform: scale(1.1);
+}
+
+.bottom-nav__item--logout:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Hover en estado inactivo */

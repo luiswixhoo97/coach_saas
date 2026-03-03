@@ -32,6 +32,7 @@ const objetivosDisponibles = [
   'Mejorar condición física',
   'Mantenimiento'
 ]
+const datosBancarios = ref(null)
 const credenciales = ref(null)
 const error = ref(null)
 const procesando = ref(false)
@@ -49,6 +50,7 @@ async function cargarDatos() {
     datosCoach.value = response.datos.coach
     planes.value = response.datos.planes
     formularioRegistro.value = response.datos.formulario_registro
+    datosBancarios.value = response.datos.datos_bancarios
     
     estado.value = 'planes'
   } catch (err) {
@@ -232,6 +234,31 @@ async function enviarRegistro() {
           </div>
         </div>
         
+        <!-- Datos bancarios del coach -->
+        <div v-if="datosBancarios && (datosBancarios.nombre_cuenta || datosBancarios.banco || datosBancarios.clave)" class="registro-publico__bank">
+          <h3 class="registro-publico__form-section-title">Datos para transferencia</h3>
+          <div class="registro-publico__bank-card">
+            <div v-if="datosBancarios.nombre_cuenta" class="registro-publico__bank-row">
+              <span class="registro-publico__bank-label">Titular</span>
+              <span class="registro-publico__bank-value">{{ datosBancarios.nombre_cuenta }}</span>
+            </div>
+            <div v-if="datosBancarios.banco" class="registro-publico__bank-row">
+              <span class="registro-publico__bank-label">Banco</span>
+              <span class="registro-publico__bank-value">{{ datosBancarios.banco }}</span>
+            </div>
+            <div v-if="datosBancarios.clave" class="registro-publico__bank-row">
+              <span class="registro-publico__bank-label">CLABE / Cuenta</span>
+              <span class="registro-publico__bank-value registro-publico__bank-value--mono">{{ datosBancarios.clave }}</span>
+            </div>
+          </div>
+          <div class="registro-publico__alert registro-publico__alert--info">
+            <p class="registro-publico__alert-text">
+              <strong>Nota:</strong> Después de crear tu cuenta, deberás realizar el pago por transferencia bancaria. 
+              El coach activará tu cuenta una vez que verifique el pago.
+            </p>
+          </div>
+        </div>
+
         <form @submit.prevent="enviarRegistro" class="registro-publico__form">
           <!-- Formulario dinámico si existe -->
           <div v-if="formularioRegistro" class="registro-publico__form-section">
@@ -377,14 +404,6 @@ async function enviarRegistro() {
                 class="registro-publico__input"
               />
             </div>
-          </div>
-          
-          <!-- Información sobre transferencia -->
-          <div class="registro-publico__alert registro-publico__alert--info">
-            <p class="registro-publico__alert-text">
-              <strong>Nota:</strong> Después de crear tu cuenta, deberás realizar el pago por transferencia bancaria. 
-              El coach activará tu cuenta una vez que verifique el pago.
-            </p>
           </div>
           
           <div v-if="error" class="registro-publico__alert registro-publico__alert--error">
@@ -1000,6 +1019,51 @@ async function enviarRegistro() {
 
 .registro-publico__success-text strong {
   color: #fff;
+}
+
+/* Bank info */
+.registro-publico__bank {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.registro-publico__bank-card {
+  background: #1e1e1e;
+  border: 1px solid #252525;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.registro-publico__bank-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.registro-publico__bank-label {
+  font-size: 0.8125rem;
+  color: #697586;
+  flex-shrink: 0;
+}
+
+.registro-publico__bank-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  text-align: right;
+  word-break: break-all;
+}
+
+.registro-publico__bank-value--mono {
+  font-family: monospace;
+  letter-spacing: 0.03em;
+  color: #00D261;
 }
 
 /* Responsive */
