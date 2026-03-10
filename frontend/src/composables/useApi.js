@@ -6,10 +6,10 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
-// URL base de la API
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
-// Origen del backend (sin /api/v1) para Sanctum CSRF
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '')
+// URL base de la API (exportada para fetch directo en PDFs/descargas)
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+// Origen del backend (sin /api/v1) para Sanctum CSRF y URLs de storage
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '')
 
 /** Obtener valor de la cookie XSRF-TOKEN (Laravel Sanctum) */
 function getXsrfTokenFromCookie() {

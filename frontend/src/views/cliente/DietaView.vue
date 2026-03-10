@@ -1,13 +1,10 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useApi } from '@/composables/useApi'
+import { useApi, API_BASE_URL } from '@/composables/useApi'
 import { useAuthStore } from '@/stores/auth'
 
 const { get, cargando } = useApi()
 const authStore = useAuthStore()
-
-// URL base de la API
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
 
 const archivos = ref([])
 const archivoSeleccionado = ref(null)

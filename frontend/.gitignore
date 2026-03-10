@@ -7,6 +7,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Env: no subir .env ni .env.local (overrides locales). .env.development y .env.production sí se commitean.
+.env
+.env.local
+
 node_modules
 dist
 dist-ssr

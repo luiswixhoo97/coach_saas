@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useApi } from '@/composables/useApi'
+import { useApi, API_ORIGIN } from '@/composables/useApi'
 import BaseSegmentedControl from '@/components/ui/BaseSegmentedControl.vue'
 import PerfilStatModal from '@/components/coach/PerfilStatModal.vue'
 
@@ -72,7 +72,7 @@ async function cargarCitasHoy() {
 
 function avatarUrl(path) {
   if (!path) return null
-  const base = (import.meta.env.VITE_API_URL || '').replace(/\/api\/v1\/?$/, '') || window.location.origin
+  const base = API_ORIGIN || window.location.origin
   return `${base}/storage/${path}`
 }
 

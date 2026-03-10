@@ -330,8 +330,8 @@ async function previewDieta(dieta) {
   try {
     // Cargar el PDF con autenticación y crear blob URL
     const { useAuthStore } = await import('@/stores/auth')
+    const { API_BASE_URL } = await import('@/composables/useApi')
     const authStore = useAuthStore()
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
     
     const response = await fetch(`${API_BASE_URL}/coach/dietas/${dieta.id}/ver`, {
       headers: {
@@ -379,8 +379,8 @@ async function descargarDieta(dieta) {
   try {
     // Obtener el token de autenticación
     const { useAuthStore } = await import('@/stores/auth')
+    const { API_BASE_URL } = await import('@/composables/useApi')
     const authStore = useAuthStore()
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
     
     // Descargar usando el endpoint que devuelve el archivo directamente
     const response = await fetch(`${API_BASE_URL}/coach/dietas/${dieta.id}/download`, {
