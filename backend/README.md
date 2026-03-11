@@ -18,6 +18,21 @@ Opcional: si quieres poner el JSON en otra ruta, define en `.env`:
 FIREBASE_CREDENTIALS=/ruta/absoluta/a/tu/firebase-credentials.json
 ```
 
+## Configuración en producción (servidor)
+
+En el `.env` del servidor, define la URL donde está el backend (carpeta `public`):
+
+```env
+APP_URL=https://tu-dominio.com/backend/public
+```
+
+Si el frontend está en el mismo dominio, opcional:
+
+```env
+CORS_ALLOWED_ORIGINS=https://tu-dominio.com
+SANCTUM_STATEFUL_DOMAINS=tu-dominio.com
+```
+
 ## Aprender Laravel
 
 Laravel tiene [documentación](https://laravel.com/docs) y [Laravel Learn](https://laravel.com/learn) en inglés. Para tutoriales en vídeo, [Laracasts](https://laracasts.com).
