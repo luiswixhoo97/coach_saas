@@ -4,8 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: () => import('@/views/HomeView.vue')
+    redirect: '/login'
   },
   // Ruta pública de registro
   {
@@ -162,14 +161,14 @@ router.beforeEach((to, from, next) => {
     } else if (authStore.esCliente) {
       next({ name: 'ClientePerfil' })
     } else {
-      next({ name: 'Home' })
+      next({ name: 'Login' })
     }
     return
   }
 
   // Verificar rol si es necesario
   if (rolRequerido && authStore.rol !== rolRequerido) {
-    next({ name: 'Home' })
+    next({ name: 'Login' })
     return
   }
 
