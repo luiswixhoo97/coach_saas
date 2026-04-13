@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
     
+    // Evita 405 como excepción no controlada cuando alguien abre la URL en el navegador (GET) o un crawler hace HEAD.
+    Route::match(['get', 'head'], '/login', function () {
+        return response()->json([
+            'mensaje' => 'Este endpoint solo acepta POST. Envía email y contraseña en el cuerpo de la solicitud.',
+        ], 405)->header('Allow', 'POST');
+    });
+
     // Rutas públicas
     Route::post('/login', [ControladorAutenticacion::class, 'login'])
         ->name('autenticacion.login');
