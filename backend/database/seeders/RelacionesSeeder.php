@@ -208,7 +208,6 @@ class RelacionesSeeder extends Seeder
             'suscripcion_id' => $suscripcion->id,
             'fecha' => now(),
             'modo' => 'presencial',
-            'fuente' => 'manual',
             'notas' => 'Evaluación inicial seed',
         ]);
 
