@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "603267239234",
+    "project_id": "coach-sass",
+    "storage_bucket": "coach-sass.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:603267239234:android:d8637d67c57ab86f4d4cdb",
+        "android_client_info": {
+          "package_name": "coach.sass"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCN6vP9tjZNiOuU62xblqrY9o86vQG2pqY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

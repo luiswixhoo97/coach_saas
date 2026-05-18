@@ -1,5 +1,5 @@
 {
-  "appId": "com.coachsaas.app",
+  "appId": "coach.sass",
   "appName": "Coach SaaS",
   "webDir": "dist",
   "server": {
