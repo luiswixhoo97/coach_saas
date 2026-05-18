@@ -33,7 +33,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Capacitor
-frontend/android/
+# frontend/android/ <- se commitea para poder rebuildar la APK desde el repo
 frontend/ios/
 frontend/.capacitor/
 
