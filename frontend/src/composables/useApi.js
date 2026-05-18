@@ -5,6 +5,7 @@
 
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { Capacitor } from '@capacitor/core'
 
 // URL base de la API (exportada para fetch directo en PDFs/descargas)
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
@@ -22,9 +23,11 @@ function getXsrfTokenFromCookie() {
   }
 }
 
-/** Asegurar que la cookie CSRF esté establecida antes de POST/PUT/DELETE */
+/** Asegurar que la cookie CSRF esté establecida antes de POST/PUT/DELETE.
+ *  En apps nativas (Capacitor/APK) se omite: usan solo Bearer token, sin CSRF. */
 let csrfPromise = null
 async function ensureCsrfCookie() {
+  if (Capacitor.isNativePlatform()) return
   if (csrfPromise) return csrfPromise
   csrfPromise = fetch(`${API_ORIGIN}/sanctum/csrf-cookie`, {
     credentials: 'include'
